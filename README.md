@@ -1,7 +1,7 @@
 # DezSwap
 [![dezswap on crates.io](https://img.shields.io/crates/v/dezswap.svg)](https://crates.io/crates/dezswap)
 [![workflow](https://github.com/dezswap/dezswap-contracts/actions/workflows/tests.yml/badge.svg)](https://github.com/dezswap/dezswap-contracts/actions/workflows/tests.yml)
-[![codecov](https://codecov.io/gh/dezswap/dezswap-contracts/branch/main/graph/badge.svg?token=ERMFLEY6Y7)](https://codecov.io/gh/dezswap/dezswap-contracts)
+[![codecov](https://codecov.io/gh/dezswap/dezswap-contracts/branch/main/graph/badge.svg?token=GQW0TPBBJH)](https://codecov.io/gh/dezswap/dezswap-contracts)
 
 Uniswap-inspired automated market-maker (AMM) protocol powered by Smart Contracts on the [XPLA Chain](https://xpla.io/).
 
