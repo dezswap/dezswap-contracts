@@ -20,10 +20,10 @@ use dezswap::pair::{
 };
 use dezswap::querier::query_token_info;
 use dezswap::token::InstantiateMsg as TokenInstantiateMsg;
-use integer_sqrt::IntegerSquareRoot;
 use protobuf::Message;
 use std::cmp::Ordering;
 use std::convert::TryInto;
+use std::ops::Mul;
 use std::str::FromStr;
 
 // version info for migration info
@@ -263,9 +263,16 @@ pub fn provide_liquidity(
 
     let liquidity_token = deps.api.addr_humanize(&pair_info.liquidity_token)?;
     let total_share = query_token_info(&deps.querier, liquidity_token)?.total_supply;
-    let share = if total_share == Uint128::zero() {
+    let share: Uint128 = if total_share == Uint128::zero() {
         // Initial share = collateral amount
-        Uint128::from((deposits[0].u128() * deposits[1].u128()).integer_sqrt())
+        let deposit0: Uint256 = deposits[0].into();
+        let deposit1: Uint256 = deposits[1].into();
+        match (Decimal256::from_ratio(deposit0.mul(deposit1), 1u8).sqrt() * Uint256::from(1u8))
+            .try_into()
+        {
+            Ok(share) => share,
+            Err(e) => return Err(ContractError::ConversionOverflowError(e)),
+        }
     } else {
         // min(1, 2)
         // 1. sqrt(deposit_0 * exchange_rate_0_to_1 * deposit_0) * (total_share / sqrt(pool_0 * pool_1))
