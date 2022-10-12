@@ -24,7 +24,7 @@ Uniswap-inspired automated market-maker (AMM) protocol powered by Smart Contract
 
    Mainnet (CodeID): 
 
-   Testnet (CodeID): 111
+   Testnet (CodeID): 134
 
 * dezswap_token
 
