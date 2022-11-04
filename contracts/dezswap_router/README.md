@@ -5,13 +5,10 @@ The Router Contract contains the logic to facilitate multi-hop swap operations v
 **Only Dezswap is supported.**
 
 dimension_37-1 Contract:
-- 
+- https://explorer.xpla.io/mainnet/address/xpla1uv4dz7ngaqwymvxggrjp3rnz3gs33szwjsnrxqg0ylkykqf8r7ns9s3cg4
 
 cube_47-5 Contract: 
 - https://explorer.xpla.io/testnet/address/xpla1pr40depxf8w50y58swdyhc0s2yjptd2xtqgnyfvkz6k40ng53gqqnyftkm
-
-Tx: 
-- 
 
 ### Operations Assertion
 The contract will check whether the resulting token is swapped into one token.
