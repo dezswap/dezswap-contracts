@@ -577,8 +577,13 @@ fn compute_swap(
         * Uint256::from(1u8);
 
     // calculate spread & commission
-    let spread_amount: Uint256 =
-        (offer_amount * Decimal256::from_ratio(ask_pool, offer_pool)) - return_amount;
+    let before_spread_deduction: Uint256 =
+        offer_amount * Decimal256::from_ratio(ask_pool, offer_pool);
+    let spread_amount = if before_spread_deduction > return_amount {
+        before_spread_deduction - return_amount
+    } else {
+        Uint256::zero()
+    };
     let commission_amount: Uint256 = return_amount * commission_rate;
 
     // commission will be absorbed to pool
