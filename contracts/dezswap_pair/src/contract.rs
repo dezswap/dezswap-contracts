@@ -750,7 +750,7 @@ fn assert_slippage_tolerance(
     Ok(())
 }
 
-const TARGET_CONTRACT_VERSION: &str = "0.1.0";
+const TARGET_CONTRACT_VERSION: &str = "0.1.1";
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     let prev_version = cw2::get_contract_version(deps.as_ref().storage)?;
