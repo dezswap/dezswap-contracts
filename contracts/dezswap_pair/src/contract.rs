@@ -577,8 +577,13 @@ fn compute_swap(
         * Uint256::from(1u8);
 
     // calculate spread & commission
-    let spread_amount: Uint256 =
-        (offer_amount * Decimal256::from_ratio(ask_pool, offer_pool)) - return_amount;
+    let before_spread_deduction: Uint256 =
+        offer_amount * Decimal256::from_ratio(ask_pool, offer_pool);
+    let spread_amount = if before_spread_deduction > return_amount {
+        before_spread_deduction - return_amount
+    } else {
+        Uint256::zero()
+    };
     let commission_amount: Uint256 = return_amount * commission_rate;
 
     // commission will be absorbed to pool
@@ -745,7 +750,7 @@ fn assert_slippage_tolerance(
     Ok(())
 }
 
-const TARGET_CONTRACT_VERSION: &str = "0.1.0";
+const TARGET_CONTRACT_VERSION: &str = "0.1.1";
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     let prev_version = cw2::get_contract_version(deps.as_ref().storage)?;
