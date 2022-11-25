@@ -277,8 +277,16 @@ pub fn provide_liquidity(
     for (i, pool) in pools.iter().enumerate() {
         let desired_amount = match total_share.is_zero() {
             true => deposits[i],
-            false => pool.amount.multiply_ratio(share, total_share),
+            false => {
+                let mut desired_amount = pool.amount.multiply_ratio(share, total_share);
+                if desired_amount.multiply_ratio(total_share, share) != pool.amount {
+                    desired_amount += Uint128::from(1u8);
+                }
+
+                desired_amount
+            }
         };
+
         let remain_amount = deposits[i] - desired_amount;
 
         if let AssetInfo::NativeToken { denom, .. } = &pool.info {
