@@ -6,7 +6,7 @@ use crate::state::PAIR_INFO;
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    coins, from_binary, to_binary, Addr, BankMsg, Binary, CanonicalAddr, Coin, CosmosMsg, Decimal,
+    coins, from_binary, to_binary, Addr, BankMsg, Binary, CanonicalAddr, CosmosMsg, Decimal,
     Decimal256, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn, Response, StdError, StdResult,
     SubMsg, Uint128, Uint256, WasmMsg,
 };
@@ -599,13 +599,6 @@ pub fn query_reverse_simulation(
         spread_amount,
         commission_amount,
     })
-}
-
-pub fn amount_of(coins: &[Coin], denom: String) -> Uint128 {
-    match coins.iter().find(|x| x.denom == denom) {
-        Some(coin) => coin.amount,
-        None => Uint128::zero(),
-    }
 }
 
 fn compute_swap(
