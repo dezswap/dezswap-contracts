@@ -22,9 +22,9 @@ Uniswap-inspired automated market-maker (AMM) protocol powered by Smart Contract
 
 * dezswap_pair
 
-   Mainnet (CodeID): 23
+   Mainnet (CodeID): 28
 
-   Testnet (CodeID): 199
+   Testnet (CodeID): 263
 
 * dezswap_token
 

@@ -257,7 +257,7 @@ dependencies = [
 
 [[package]]
 name = "dezswap"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -270,7 +270,7 @@ dependencies = [
 
 [[package]]
 name = "dezswap-factory"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -286,7 +286,7 @@ dependencies = [
 
 [[package]]
 name = "dezswap-pair"
-version = "0.1.2"
+version = "1.0.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -304,7 +304,7 @@ dependencies = [
 
 [[package]]
 name = "dezswap-router"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",

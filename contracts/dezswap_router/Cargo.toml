@@ -1,6 +1,6 @@
 [package]
 name = "dezswap-router"
-version = "0.1.0"
+version = "1.0.0"
 authors = ["DELIGHT LABS"]
 edition = "2018"
 description = "A Dezswap router contract - provides multi-step operations to facilitate single sign operation"
@@ -36,7 +36,7 @@ backtraces = ["cosmwasm-std/backtraces"]
 [dependencies]
 cw20 = { version = "0.13.2" } 
 cosmwasm-std = { version = "1.0.0" }
-dezswap = { path = "../../packages/dezswap", default-features = false, version = "0.1.0"}
+dezswap = { path = "../../packages/dezswap", default-features = false, version = "1.0.0"}
 cw-storage-plus = { version = "0.13.2"}
 integer-sqrt = "0.1.5"
 schemars = "0.8.10"
