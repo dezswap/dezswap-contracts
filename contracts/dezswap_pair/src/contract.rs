@@ -20,6 +20,7 @@ use dezswap::pair::{
 };
 use dezswap::querier::query_token_info;
 use dezswap::token::InstantiateMsg as TokenInstantiateMsg;
+use dezswap::util::migrate_version;
 use protobuf::Message;
 use std::cmp::Ordering;
 use std::convert::TryInto;
@@ -836,22 +837,12 @@ pub fn assert_deadline(blocktime: u64, deadline: Option<u64>) -> Result<(), Cont
 const TARGET_CONTRACT_VERSION: &str = "1.0.0";
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    let prev_version = cw2::get_contract_version(deps.as_ref().storage)?;
-
-    if prev_version.contract != CONTRACT_NAME {
-        return Err(ContractError::Std(StdError::generic_err(
-            "invalid contract",
-        )));
-    }
-
-    if prev_version.version != TARGET_CONTRACT_VERSION {
-        return Err(ContractError::Std(StdError::generic_err(format!(
-            "invalid contract version. target {}, but source is {}",
-            TARGET_CONTRACT_VERSION, prev_version.version
-        ))));
-    }
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    migrate_version(
+        deps,
+        TARGET_CONTRACT_VERSION,
+        CONTRACT_NAME,
+        CONTRACT_VERSION,
+    )?;
 
     Ok(Response::default())
 }
