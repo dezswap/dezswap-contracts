@@ -23,6 +23,7 @@ pub enum ExecuteMsg {
     ProvideLiquidity {
         assets: [Asset; 2],
         receiver: Option<String>,
+        refund_receiver: Option<String>,
         deadline: Option<u64>,
     },
     /// Swap an offer asset to the other

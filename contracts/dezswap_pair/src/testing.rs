@@ -165,6 +165,7 @@ fn provide_liquidity() {
         ],
         receiver: None,
         deadline: None,
+        refund_receiver: None,
     };
 
     let env = mock_env();
@@ -244,6 +245,7 @@ fn provide_liquidity() {
         ],
         receiver: Some("staking0000".to_string()), // try changing receiver
         deadline: None,
+        refund_receiver: None,
     };
 
     let env = mock_env();
@@ -312,6 +314,7 @@ fn provide_liquidity() {
         ],
         receiver: None,
         deadline: None,
+        refund_receiver: None,
     };
 
     let env = mock_env();
@@ -369,6 +372,7 @@ fn provide_liquidity() {
         ],
         receiver: None,
         deadline: None,
+        refund_receiver: None,
     };
 
     let env = mock_env();
