@@ -5,14 +5,18 @@ use crate::state::{pair_key, TmpPairInfo, TMP_PAIR_INFO};
 
 use cosmwasm_std::testing::{mock_env, mock_info, MockApi, MockStorage, MOCK_CONTRACT_ADDR};
 use cosmwasm_std::{
-    attr, coin, from_binary, to_binary, Addr, CosmosMsg, OwnedDeps, Reply, ReplyOn, Response,
-    StdError, SubMsg, SubMsgResponse, SubMsgResult, Uint128, WasmMsg,
+    attr, coin, coins, from_binary, to_binary, Addr, CosmosMsg, OwnedDeps, Reply, ReplyOn,
+    Response, StdError, SubMsg, SubMsgResponse, SubMsgResult, Uint128, WasmMsg,
 };
+use cw20::Cw20ExecuteMsg;
 use dezswap::asset::{Asset, AssetInfo, PairInfo};
 use dezswap::factory::{
     ConfigResponse, ExecuteMsg, InstantiateMsg, NativeTokenDecimalsResponse, QueryMsg,
 };
-use dezswap::pair::{InstantiateMsg as PairInstantiateMsg, MigrateMsg as PairMigrateMsg};
+use dezswap::pair::{
+    ExecuteMsg as PairExecuteMsg, InstantiateMsg as PairInstantiateMsg,
+    MigrateMsg as PairMigrateMsg,
+};
 
 #[test]
 fn proper_initialization() {
@@ -328,16 +332,19 @@ fn fail_to_create_pair_with_unactive_denoms() {
     let mut deps = mock_dependencies(&[coin(10u128, "uusd".to_string())]);
     deps = init(deps);
 
+    deps.querier
+        .with_dezswap_factory(&[], &[("uusd".to_string(), 6u8)]);
+
     let assets = [
         Asset {
             info: AssetInfo::NativeToken {
-                denom: "uusd".to_string(),
+                denom: "uxxx".to_string(),
             },
             amount: Uint128::zero(),
         },
         Asset {
             info: AssetInfo::NativeToken {
-                denom: "uxxx".to_string(),
+                denom: "uusd".to_string(),
             },
             amount: Uint128::zero(),
         },
@@ -364,6 +371,8 @@ fn fail_to_create_pair_with_unknown_token() {
 
     // we can just call .unwrap() to assert this was a success
     let _res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+    deps.querier
+        .with_dezswap_factory(&[], &[("uluna".to_string(), 6u8)]);
 
     let assets = [
         Asset {
@@ -388,7 +397,7 @@ fn fail_to_create_pair_with_unknown_token() {
 }
 
 #[test]
-fn reply_test() {
+fn reply_only_create_pair() {
     let mut deps = mock_dependencies(&[]);
 
     deps.querier.with_token_balances(&[(
@@ -459,7 +468,7 @@ fn reply_test() {
         &[(
             &"0000".to_string(),
             &PairInfo {
-                asset_infos: asset_infos.clone(),
+                asset_infos,
                 contract_addr: "0000".to_string(),
                 liquidity_token: "liquidity0000".to_string(),
                 asset_decimals: [8u8, 8u8],
@@ -468,27 +477,179 @@ fn reply_test() {
         &[],
     );
 
-    let _res = reply(deps.as_mut(), mock_env(), reply_msg).unwrap();
+    let res = reply(deps.as_mut(), mock_env(), reply_msg).unwrap();
 
-    let query_res = query(
-        deps.as_ref(),
-        mock_env(),
-        QueryMsg::Pair {
-            asset_infos: asset_infos.clone(),
-        },
-    )
-    .unwrap();
-
-    let pair_res: PairInfo = from_binary(&query_res).unwrap();
+    assert_eq!(res.messages.len(), 0);
+    assert_eq!(res.attributes[0], attr("pair_contract_addr", "0000"));
     assert_eq!(
-        pair_res,
-        PairInfo {
-            liquidity_token: "liquidity0000".to_string(),
-            contract_addr: "0000".to_string(),
-            asset_infos,
-            asset_decimals: [8u8, 8u8]
+        res.attributes[1],
+        attr("liquidity_token_addr", "liquidity0000")
+    );
+}
+
+#[test]
+fn reply_create_pair_with_provide() {
+    let mut deps = mock_dependencies(&[]);
+
+    deps.querier
+        .with_balance(&[(&MOCK_CONTRACT_ADDR.to_string(), coins(100u128, "axpla"))]);
+
+    deps.querier.with_token_balances(&[(
+        &"pair0000".to_string(),
+        &[(&"asset0000".to_string(), &Uint128::from(100u128))],
+    )]);
+
+    let assets = [
+        Asset {
+            info: AssetInfo::NativeToken {
+                denom: "axpla".to_string(),
+            },
+            amount: Uint128::from(100u128),
+        },
+        Asset {
+            info: AssetInfo::Token {
+                contract_addr: "asset0000".to_string(),
+            },
+            amount: Uint128::from(100u128),
+        },
+    ];
+
+    let raw_assets = [
+        assets[0].to_raw(deps.as_ref().api).unwrap(),
+        assets[1].to_raw(deps.as_ref().api).unwrap(),
+    ];
+
+    let raw_infos = [
+        assets[0].info.to_raw(deps.as_ref().api).unwrap(),
+        assets[1].info.to_raw(deps.as_ref().api).unwrap(),
+    ];
+
+    let pair_key = pair_key(&raw_infos);
+    TMP_PAIR_INFO
+        .save(
+            &mut deps.storage,
+            &TmpPairInfo {
+                assets: raw_assets,
+                pair_key,
+                sender: Addr::unchecked("addr0000"),
+                asset_decimals: [18u8, 8u8],
+            },
+        )
+        .unwrap();
+
+    let reply_msg = Reply {
+        id: 1,
+        result: SubMsgResult::Ok(SubMsgResponse {
+            events: vec![],
+            data: Some(vec![10, 8, 112, 97, 105, 114, 48, 48, 48, 48].into()),
+        }),
+    };
+
+    let asset_infos = [
+        AssetInfo::NativeToken {
+            denom: "axpla".to_string(),
+        },
+        AssetInfo::Token {
+            contract_addr: "asset0000".to_string(),
+        },
+    ];
+
+    // register dezswap pair querier
+    deps.querier.with_dezswap_factory(
+        &[(
+            &"pair0000".to_string(),
+            &PairInfo {
+                asset_infos,
+                contract_addr: "pair0000".to_string(),
+                liquidity_token: "liquidity0000".to_string(),
+                asset_decimals: [18u8, 8u8],
+            },
+        )],
+        &[("axpla".to_string(), 18u8)],
+    );
+
+    let res = reply(deps.as_mut(), mock_env(), reply_msg).unwrap();
+
+    assert_eq!(res.messages.len(), 3);
+    assert_eq!(
+        res.messages[0],
+        SubMsg {
+            id: 0,
+            msg: CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "asset0000".to_string(),
+                msg: to_binary(&Cw20ExecuteMsg::IncreaseAllowance {
+                    spender: "pair0000".to_string(),
+                    amount: Uint128::from(100u128),
+                    expires: None,
+                })
+                .unwrap(),
+                funds: vec![],
+            }),
+            gas_limit: None,
+            reply_on: ReplyOn::Never,
         }
     );
+    assert_eq!(
+        res.messages[1],
+        SubMsg {
+            id: 0,
+            msg: CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "asset0000".to_string(),
+                msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
+                    owner: "addr0000".to_string(),
+                    amount: Uint128::from(100u128),
+                    recipient: MOCK_CONTRACT_ADDR.to_string(),
+                })
+                .unwrap(),
+                funds: vec![],
+            }),
+            gas_limit: None,
+            reply_on: ReplyOn::Never,
+        }
+    );
+    assert_eq!(
+        res.messages[2],
+        SubMsg {
+            id: 0,
+            msg: CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: "pair0000".to_string(),
+                msg: to_binary(&PairExecuteMsg::ProvideLiquidity {
+                    assets,
+                    receiver: Some("addr0000".to_string()),
+                    refund_receiver: Some("addr0000".to_string()),
+                    deadline: None
+                })
+                .unwrap(),
+                funds: coins(100u128, "axpla".to_string()),
+            }),
+            gas_limit: None,
+            reply_on: ReplyOn::Never,
+        }
+    );
+    assert_eq!(res.attributes[0], attr("pair_contract_addr", "pair0000"));
+    assert_eq!(
+        res.attributes[1],
+        attr("liquidity_token_addr", "liquidity0000")
+    );
+}
+
+#[test]
+fn failed_reply_with_unknown_id() {
+    let mut deps = mock_dependencies(&[]);
+
+    let res = reply(
+        deps.as_mut(),
+        mock_env(),
+        Reply {
+            id: 9,
+            result: SubMsgResult::Ok(SubMsgResponse {
+                events: vec![],
+                data: Some(vec![].into()),
+            }),
+        },
+    );
+
+    assert_eq!(res, Err(StdError::generic_err("invalid reply msg")))
 }
 
 #[test]
