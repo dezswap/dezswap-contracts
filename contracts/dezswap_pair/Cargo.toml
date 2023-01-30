@@ -1,6 +1,6 @@
 [package]
 name = "dezswap-pair"
-version = "1.0.0"
+version = "1.1.0"
 authors = ["DELIGHT LABS"]
 edition = "2018"
 description = "A Dezswap pair contract"
@@ -43,7 +43,7 @@ schemars = "0.8.10"
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.20" }
 protobuf = { version = "2", features = ["with-bytes"] }
-dezswap = { path = "../../packages/dezswap", default-features = false, version = "1.0.0"}
+dezswap = { path = "../../packages/dezswap", default-features = false, version = "1.1.0"}
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0" }

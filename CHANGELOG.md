@@ -1,3 +1,8 @@
+# 1.1.0
+
+## New features
+* [90820e](https://github.com/dezswap/dezswap-contracts/pull/12/commits/90820e005e963e6bdedae8f8c73e1c62120d9d59) create pair with provide liqudity
+
 # 1.0.0
 
 ## New features

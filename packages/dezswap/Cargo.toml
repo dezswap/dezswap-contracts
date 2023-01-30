@@ -1,6 +1,6 @@
 [package]
 name = "dezswap"
-version = "1.0.0"
+version = "1.1.0"
 authors = ["DELIGHT LABS"]
 edition = "2018"
 description = "Common dezswap types"
