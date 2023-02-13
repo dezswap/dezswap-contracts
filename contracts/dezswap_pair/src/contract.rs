@@ -341,6 +341,18 @@ pub fn provide_liquidity(
                 })?,
                 funds: vec![],
             }));
+
+            if !remain_amount.is_zero() {
+                messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
+                    contract_addr: contract_addr.to_string(),
+                    msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
+                        owner: info.sender.to_string(),
+                        recipient: refund_receiver.to_string(),
+                        amount: remain_amount,
+                    })?,
+                    funds: vec![],
+                }));
+            }
         }
     }
 
