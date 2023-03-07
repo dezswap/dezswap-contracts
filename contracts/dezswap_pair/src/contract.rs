@@ -95,8 +95,7 @@ pub fn execute(
             assets,
             receiver,
             deadline,
-            refund_receiver,
-        } => provide_liquidity(deps, env, info, assets, receiver, deadline, refund_receiver),
+        } => provide_liquidity(deps, env, info, assets, receiver, deadline),
         ExecuteMsg::Swap {
             offer_asset,
             belief_price,
@@ -239,7 +238,6 @@ pub fn provide_liquidity(
     assets: [Asset; 2],
     receiver: Option<String>,
     deadline: Option<u64>,
-    refund_receiver: Option<String>,
 ) -> Result<Response, ContractError> {
     assert_deadline(env.block.time.seconds(), deadline)?;
 
@@ -302,9 +300,7 @@ pub fn provide_liquidity(
     }
 
     // refund of remaining native token & desired of token
-    let refund_receiver = refund_receiver.unwrap_or_else(|| info.sender.to_string());
     let mut refund_assets: Vec<Asset> = vec![];
-
     for (i, pool) in pools.iter().enumerate() {
         let desired_amount = match total_share.is_zero() {
             true => deposits[i],
@@ -323,11 +319,10 @@ pub fn provide_liquidity(
             info: pool.info.clone(),
             amount: remain_amount,
         });
-
         if let AssetInfo::NativeToken { denom, .. } = &pool.info {
             if !remain_amount.is_zero() {
                 messages.push(CosmosMsg::Bank(BankMsg::Send {
-                    to_address: refund_receiver.to_string(),
+                    to_address: info.sender.to_string(),
                     amount: coins(remain_amount.u128(), denom),
                 }))
             }
@@ -341,18 +336,6 @@ pub fn provide_liquidity(
                 })?,
                 funds: vec![],
             }));
-
-            if !remain_amount.is_zero() {
-                messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr: contract_addr.to_string(),
-                    msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
-                        owner: info.sender.to_string(),
-                        recipient: refund_receiver.to_string(),
-                        amount: remain_amount,
-                    })?,
-                    funds: vec![],
-                }));
-            }
         }
     }
 
@@ -376,7 +359,6 @@ pub fn provide_liquidity(
         ("receiver", receiver.as_str()),
         ("assets", &format!("{}, {}", assets[0], assets[1])),
         ("share", &share.to_string()),
-        ("refund_receiver", refund_receiver.as_str()),
         (
             "refund_assets",
             &format!("{}, {}", refund_assets[0], refund_assets[1]),

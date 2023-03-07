@@ -616,7 +616,6 @@ fn reply_create_pair_with_provide() {
                 msg: to_binary(&PairExecuteMsg::ProvideLiquidity {
                     assets,
                     receiver: Some("addr0000".to_string()),
-                    refund_receiver: Some("addr0000".to_string()),
                     deadline: None
                 })
                 .unwrap(),

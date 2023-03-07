@@ -32,9 +32,7 @@ When providing liquidity from a smart contract, tokens deposited into a pool at 
 #### Receiver
 
 If a user specifies the `receiver` at `provide_liqudity` msg, sends LP token to receiver. The default value is sender.
-#### Refund receiver
 
-If a user specifies the `refund_receiver` at `provide_liqudity` msg, sends remain amount to receiver. The default value is sender.
 #### Min Assets
 
 If a user specifies the `min_assets` at `withdraw_liquidity` msg, the contract restricts the operation when the returned assets are less than the min assets.

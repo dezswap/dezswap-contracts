@@ -165,7 +165,6 @@ fn provide_liquidity() {
         ],
         receiver: None,
         deadline: None,
-        refund_receiver: None,
     };
 
     let env = mock_env();
@@ -245,7 +244,6 @@ fn provide_liquidity() {
         ],
         receiver: Some("staking0000".to_string()), // try changing receiver
         deadline: None,
-        refund_receiver: None,
     };
 
     let env = mock_env();
@@ -314,7 +312,6 @@ fn provide_liquidity() {
         ],
         receiver: None,
         deadline: None,
-        refund_receiver: None,
     };
 
     let env = mock_env();
@@ -372,7 +369,6 @@ fn provide_liquidity() {
         ],
         receiver: None,
         deadline: None,
-        refund_receiver: Some("refund0001".to_string()),
     };
 
     let env = mock_env();
@@ -385,8 +381,7 @@ fn provide_liquidity() {
     );
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     let transfer_from_msg = res.messages.get(0).expect("no message");
-    let refund_msg = res.messages.get(1).expect("no message");
-    let mint_msg = res.messages.get(2).expect("no message");
+    let mint_msg = res.messages.get(1).expect("no message");
     assert_eq!(
         transfer_from_msg,
         &SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -395,19 +390,6 @@ fn provide_liquidity() {
                 owner: "addr0001".to_string(),
                 recipient: MOCK_CONTRACT_ADDR.to_string(),
                 amount: Uint128::from(98u128),
-            })
-            .unwrap(),
-            funds: vec![],
-        }))
-    );
-    assert_eq!(
-        refund_msg,
-        &SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: "asset0000".to_string(),
-            msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
-                owner: "addr0001".to_string(),
-                recipient: "refund0001".to_string(),
-                amount: Uint128::from(2u128),
             })
             .unwrap(),
             funds: vec![],
