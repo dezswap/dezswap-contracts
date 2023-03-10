@@ -29,4 +29,10 @@ pub enum ContractError {
 
     #[error("Expired deadline")]
     ExpiredDeadline {},
+
+    #[error("More initial liquidity needed ({min_lp_token} > {given_lp})")]
+    MinimumLiquidityAmountError {
+        min_lp_token: String,
+        given_lp: String,
+    },
 }
