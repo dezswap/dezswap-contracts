@@ -34,16 +34,22 @@ The factory contract can perform creation of dezswap pair contract and also be u
 ```json
 {
   "create_pair": {
-    "asset_infos": [
+    "assets": [
       {
-        "token": {
-          "contract_addr": "xpla..."
-        }
+        "info": {
+          "token": {
+            "contract_addr": "xpla..."
+          }
+        },
+        "amount": "0"
       },
       {
-        "native_token": {
-          "denom": "uusd"
-        }
+        "info": {
+          "native_token": {
+            "denom": "uusd"
+          }
+        },
+        "amount": "0"
       }
     ]
   }
