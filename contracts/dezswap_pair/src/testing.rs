@@ -204,6 +204,7 @@ fn provide_liquidity() {
                 amount: Uint128::from(10000u128),
             },
         ],
+        min_assets: None,
         receiver: None,
         deadline: None,
     };
@@ -282,6 +283,7 @@ fn provide_liquidity() {
         ),
     ]);
 
+    // revert as before slippage activated
     let msg = ExecuteMsg::ProvideLiquidity {
         assets: [
             Asset {
@@ -297,6 +299,20 @@ fn provide_liquidity() {
                 amount: Uint128::from(200u128),
             },
         ],
+        min_assets: Some([
+            Asset {
+                info: AssetInfo::Token {
+                    contract_addr: "asset0000".to_string(),
+                },
+                amount: Uint128::from(95u128),
+            },
+            Asset {
+                info: AssetInfo::NativeToken {
+                    denom: "uusd".to_string(),
+                },
+                amount: Uint128::from(101u128),
+            },
+        ]),
         receiver: Some("staking0000".to_string()), // try changing receiver
         deadline: None,
     };
@@ -310,7 +326,76 @@ fn provide_liquidity() {
         }],
     );
 
-    // only accept 100, then 50 share will be generated with 100 * (100 / 200)
+    let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
+    match res {
+        ContractError::MinAmountAssertion { .. } => (),
+        _ => panic!("MinAmountAssertion should be raised"),
+    }
+
+    deps.querier.with_balance(&[(
+        &MOCK_CONTRACT_ADDR.to_string(),
+        vec![Coin {
+            denom: "uusd".to_string(),
+            amount: Uint128::from(
+                101u128 + 200u128, /* user deposit must be pre-applied */
+            ),
+        }],
+    )]);
+
+    deps.querier.with_token_balances(&[
+        (
+            &"liquidity0000".to_string(),
+            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::from(100u128))],
+        ),
+        (
+            &"asset0000".to_string(),
+            &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::from(200u128))],
+        ),
+    ]);
+
+    // accept 100 and 1 will be refunded
+    let msg = ExecuteMsg::ProvideLiquidity {
+        assets: [
+            Asset {
+                info: AssetInfo::Token {
+                    contract_addr: "asset0000".to_string(),
+                },
+                amount: Uint128::from(100u128),
+            },
+            Asset {
+                info: AssetInfo::NativeToken {
+                    denom: "uusd".to_string(),
+                },
+                amount: Uint128::from(101u128),
+            },
+        ],
+        min_assets: Some([
+            Asset {
+                info: AssetInfo::Token {
+                    contract_addr: "asset0000".to_string(),
+                },
+                amount: Uint128::from(99u128),
+            },
+            Asset {
+                info: AssetInfo::NativeToken {
+                    denom: "uusd".to_string(),
+                },
+                amount: Uint128::from(99u128),
+            },
+        ]),
+        receiver: Some("staking0000".to_string()), // try changing receiver
+        deadline: None,
+    };
+
+    let env = mock_env();
+    let info = mock_info(
+        "addr0000",
+        &[Coin {
+            denom: "uusd".to_string(),
+            amount: Uint128::from(101u128),
+        }],
+    );
+
     let res: Response = execute(deps.as_mut(), env, info, msg).unwrap();
     let refund_msg = res.messages.get(0).expect("no message");
     let transfer_from_msg = res.messages.get(1).expect("no message");
@@ -320,7 +405,7 @@ fn provide_liquidity() {
         refund_msg,
         &SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: "addr0000".to_string(),
-            amount: coins(100u128, "uusd".to_string())
+            amount: coins(1u128, "uusd".to_string())
         }))
     );
     assert_eq!(
@@ -365,6 +450,7 @@ fn provide_liquidity() {
                 amount: Uint128::from(50u128),
             },
         ],
+        min_assets: None,
         receiver: None,
         deadline: None,
     };
@@ -422,6 +508,20 @@ fn provide_liquidity() {
                 amount: Uint128::from(98u128),
             },
         ],
+        min_assets: Some([
+            Asset {
+                info: AssetInfo::Token {
+                    contract_addr: "asset0000".to_string(),
+                },
+                amount: Uint128::from(98u128),
+            },
+            Asset {
+                info: AssetInfo::NativeToken {
+                    denom: "uusd".to_string(),
+                },
+                amount: Uint128::from(98u128),
+            },
+        ]),
         receiver: None,
         deadline: None,
     };

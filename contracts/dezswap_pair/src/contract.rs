@@ -95,9 +95,10 @@ pub fn execute(
         ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
         ExecuteMsg::ProvideLiquidity {
             assets,
+            min_assets,
             receiver,
             deadline,
-        } => provide_liquidity(deps, env, info, assets, receiver, deadline),
+        } => provide_liquidity(deps, env, info, assets, min_assets, receiver, deadline),
         ExecuteMsg::Swap {
             offer_asset,
             belief_price,
@@ -238,6 +239,7 @@ pub fn provide_liquidity(
     env: Env,
     info: MessageInfo,
     assets: [Asset; 2],
+    min_assets: Option<[Asset; 2]>,
     receiver: Option<String>,
     deadline: Option<u64>,
 ) -> Result<Response, ContractError> {
@@ -325,6 +327,7 @@ pub fn provide_liquidity(
 
     // refund of remaining native token & desired of token
     let mut refund_assets: Vec<Asset> = vec![];
+    let mut desired_assets: Vec<Asset> = vec![];
     for (i, pool) in pools.iter().enumerate() {
         let desired_amount = match total_share.is_zero() {
             true => deposits[i],
@@ -360,6 +363,28 @@ pub fn provide_liquidity(
                 })?,
                 funds: vec![],
             }));
+        }
+
+        let mut desired_asset = pool.clone();
+        desired_asset.amount = desired_amount;
+        desired_assets.push(desired_asset)
+    }
+
+    // Default slippage tolerance: 0.5%
+    match min_assets {
+        Some(min_assets) => assert_minimum_assets(desired_assets, Some(min_assets))?,
+        None => {
+            let default_mint_assets = assets.clone().map(|unit_asset| -> Asset {
+                let mut new_unit_asset = unit_asset.clone();
+                new_unit_asset.amount = new_unit_asset
+                    .amount
+                    .checked_multiply_ratio(995u128, 1000u128)
+                    .unwrap();
+
+                new_unit_asset
+            });
+
+            assert_minimum_assets(desired_assets, Some(default_mint_assets))?;
         }
     }
 

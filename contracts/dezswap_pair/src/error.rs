@@ -35,4 +35,7 @@ pub enum ContractError {
         min_lp_token: String,
         given_lp: String,
     },
+
+    #[error("Max slippage assertion")]
+    MaxSlippageAssertion {},
 }
