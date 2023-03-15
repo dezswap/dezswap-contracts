@@ -376,7 +376,7 @@ pub fn provide_liquidity(
         None => {
             let default_mint_assets = assets.clone().map(|unit_asset| -> Asset {
                 let mut new_unit_asset = unit_asset.clone();
-                new_unit_asset.amount = new_unit_asset
+                new_unit_asset.amount = unit_asset
                     .amount
                     .checked_multiply_ratio(995u128, 1000u128)
                     .unwrap();
