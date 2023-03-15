@@ -165,6 +165,7 @@ fn provide_liquidity() {
         ],
         receiver: None,
         deadline: None,
+        min_assets: None,
     };
     let env = mock_env();
     let info = mock_info(
