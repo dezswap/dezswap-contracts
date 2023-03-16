@@ -310,7 +310,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> StdResult<Response> {
                 assets,
                 receiver: Some(tmp_pair_info.sender.to_string()),
                 deadline: None,
-                min_assets: None,
+                slippage_tolerance: None,
             })?,
             funds,
         }));

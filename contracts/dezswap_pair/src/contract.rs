@@ -95,10 +95,18 @@ pub fn execute(
         ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
         ExecuteMsg::ProvideLiquidity {
             assets,
-            min_assets,
             receiver,
             deadline,
-        } => provide_liquidity(deps, env, info, assets, min_assets, receiver, deadline),
+            slippage_tolerance,
+        } => provide_liquidity(
+            deps,
+            env,
+            info,
+            assets,
+            receiver,
+            deadline,
+            slippage_tolerance,
+        ),
         ExecuteMsg::Swap {
             offer_asset,
             belief_price,
@@ -239,9 +247,9 @@ pub fn provide_liquidity(
     env: Env,
     info: MessageInfo,
     assets: [Asset; 2],
-    min_assets: Option<[Asset; 2]>,
     receiver: Option<String>,
     deadline: Option<u64>,
+    slippage_tolerance: Option<Decimal>,
 ) -> Result<Response, ContractError> {
     assert_deadline(env.block.time.seconds(), deadline)?;
 
@@ -327,7 +335,6 @@ pub fn provide_liquidity(
 
     // refund of remaining native token & desired of token
     let mut refund_assets: Vec<Asset> = vec![];
-    let mut desired_assets: Vec<Asset> = vec![];
     for (i, pool) in pools.iter().enumerate() {
         let desired_amount = match total_share.is_zero() {
             true => deposits[i],
@@ -364,29 +371,9 @@ pub fn provide_liquidity(
                 funds: vec![],
             }));
         }
-
-        let mut desired_asset = pool.clone();
-        desired_asset.amount = desired_amount;
-        desired_assets.push(desired_asset)
     }
 
-    // Default slippage tolerance: 0.5%
-    match min_assets {
-        Some(min_assets) => assert_minimum_assets(desired_assets, Some(min_assets))?,
-        None => {
-            let default_mint_assets = assets.clone().map(|unit_asset| -> Asset {
-                let mut new_unit_asset = unit_asset.clone();
-                new_unit_asset.amount = unit_asset
-                    .amount
-                    .checked_multiply_ratio(995u128, 1000u128)
-                    .unwrap();
-
-                new_unit_asset
-            });
-
-            assert_minimum_assets(desired_assets, Some(default_mint_assets))?;
-        }
-    }
+    assert_slippage_tolerance(&slippage_tolerance, &deposits, &pools)?;
 
     // mint LP token to sender
     let receiver = receiver.unwrap_or_else(|| info.sender.to_string());
@@ -696,6 +683,34 @@ fn compute_swap(
         spread_amount.try_into()?,
         commission_amount.try_into()?,
     ))
+}
+
+fn assert_slippage_tolerance(
+    slippage_tolerance: &Option<Decimal>,
+    deposits: &[Uint128; 2],
+    pools: &[Asset; 2],
+) -> Result<(), ContractError> {
+    if let Some(slippage_tolerance) = *slippage_tolerance {
+        let slippage_tolerance: Decimal256 = Decimal256::from_str(&slippage_tolerance.to_string())?;
+        if slippage_tolerance > Decimal256::one() {
+            return Err(StdError::generic_err("slippage_tolerance cannot bigger than 1").into());
+        }
+
+        let one_minus_slippage_tolerance = Decimal256::one() - slippage_tolerance;
+        let deposits: [Uint256; 2] = [deposits[0].into(), deposits[1].into()];
+        let pools: [Uint256; 2] = [pools[0].amount.into(), pools[1].amount.into()];
+
+        // Ensure each prices are not dropped as much as slippage tolerance rate
+        if Decimal256::from_ratio(deposits[0], deposits[1]) * one_minus_slippage_tolerance
+            > Decimal256::from_ratio(pools[0], pools[1])
+            || Decimal256::from_ratio(deposits[1], deposits[0]) * one_minus_slippage_tolerance
+                > Decimal256::from_ratio(pools[1], pools[0])
+        {
+            return Err(ContractError::MaxSlippageAssertion {});
+        }
+    }
+
+    Ok(())
 }
 
 #[test]

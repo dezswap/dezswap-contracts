@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use crate::contract::{
     assert_deadline, assert_max_spread, assert_minimum_assets, execute, instantiate,
     query_pair_info, query_pool, query_reverse_simulation, query_simulation, reply,
@@ -165,7 +167,7 @@ fn provide_liquidity() {
         ],
         receiver: None,
         deadline: None,
-        min_assets: None,
+        slippage_tolerance: None,
     };
     let env = mock_env();
     let info = mock_info(
@@ -205,9 +207,9 @@ fn provide_liquidity() {
                 amount: Uint128::from(10000u128),
             },
         ],
-        min_assets: None,
         receiver: None,
         deadline: None,
+        slippage_tolerance: None,
     };
 
     let env = mock_env();
@@ -218,6 +220,7 @@ fn provide_liquidity() {
             amount: Uint128::from(10000u128),
         }],
     );
+
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     let liquidity_to_contract_msg = res.messages.get(0).expect("no message");
     let transfer_from_msg = res.messages.get(1).expect("no message");
@@ -300,22 +303,9 @@ fn provide_liquidity() {
                 amount: Uint128::from(200u128),
             },
         ],
-        min_assets: Some([
-            Asset {
-                info: AssetInfo::Token {
-                    contract_addr: "asset0000".to_string(),
-                },
-                amount: Uint128::from(95u128),
-            },
-            Asset {
-                info: AssetInfo::NativeToken {
-                    denom: "uusd".to_string(),
-                },
-                amount: Uint128::from(101u128),
-            },
-        ]),
         receiver: Some("staking0000".to_string()), // try changing receiver
         deadline: None,
+        slippage_tolerance: Some(Decimal::from_str("0.005").unwrap()),
     };
 
     let env = mock_env();
@@ -329,8 +319,8 @@ fn provide_liquidity() {
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap_err();
     match res {
-        ContractError::MinAmountAssertion { .. } => (),
-        _ => panic!("MinAmountAssertion should be raised"),
+        ContractError::MaxSlippageAssertion { .. } => (),
+        _ => panic!("MaxSlippageAssertion should be raised"),
     }
 
     deps.querier.with_balance(&[(
@@ -370,22 +360,9 @@ fn provide_liquidity() {
                 amount: Uint128::from(101u128),
             },
         ],
-        min_assets: Some([
-            Asset {
-                info: AssetInfo::Token {
-                    contract_addr: "asset0000".to_string(),
-                },
-                amount: Uint128::from(99u128),
-            },
-            Asset {
-                info: AssetInfo::NativeToken {
-                    denom: "uusd".to_string(),
-                },
-                amount: Uint128::from(99u128),
-            },
-        ]),
         receiver: Some("staking0000".to_string()), // try changing receiver
         deadline: None,
+        slippage_tolerance: Some(Decimal::from_str("0.05").unwrap()),
     };
 
     let env = mock_env();
@@ -451,9 +428,9 @@ fn provide_liquidity() {
                 amount: Uint128::from(50u128),
             },
         ],
-        min_assets: None,
         receiver: None,
         deadline: None,
+        slippage_tolerance: Some(Decimal::from_str("0.005").unwrap()),
     };
 
     let env = mock_env();
@@ -509,22 +486,9 @@ fn provide_liquidity() {
                 amount: Uint128::from(98u128),
             },
         ],
-        min_assets: Some([
-            Asset {
-                info: AssetInfo::Token {
-                    contract_addr: "asset0000".to_string(),
-                },
-                amount: Uint128::from(98u128),
-            },
-            Asset {
-                info: AssetInfo::NativeToken {
-                    denom: "uusd".to_string(),
-                },
-                amount: Uint128::from(98u128),
-            },
-        ]),
         receiver: None,
         deadline: None,
+        slippage_tolerance: Some(Decimal::from_str("0.05").unwrap()),
     };
 
     let env = mock_env();

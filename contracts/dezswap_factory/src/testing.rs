@@ -617,7 +617,7 @@ fn reply_create_pair_with_provide() {
                     assets,
                     receiver: Some("addr0000".to_string()),
                     deadline: None,
-                    min_assets: None,
+                    slippage_tolerance: None,
                 })
                 .unwrap(),
                 funds: coins(100u128, "axpla".to_string()),
