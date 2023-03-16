@@ -616,7 +616,8 @@ fn reply_create_pair_with_provide() {
                 msg: to_binary(&PairExecuteMsg::ProvideLiquidity {
                     assets,
                     receiver: Some("addr0000".to_string()),
-                    deadline: None
+                    deadline: None,
+                    slippage_tolerance: None,
                 })
                 .unwrap(),
                 funds: coins(100u128, "axpla".to_string()),

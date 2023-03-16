@@ -97,7 +97,16 @@ pub fn execute(
             assets,
             receiver,
             deadline,
-        } => provide_liquidity(deps, env, info, assets, receiver, deadline),
+            slippage_tolerance,
+        } => provide_liquidity(
+            deps,
+            env,
+            info,
+            assets,
+            receiver,
+            deadline,
+            slippage_tolerance,
+        ),
         ExecuteMsg::Swap {
             offer_asset,
             belief_price,
@@ -240,6 +249,7 @@ pub fn provide_liquidity(
     assets: [Asset; 2],
     receiver: Option<String>,
     deadline: Option<u64>,
+    slippage_tolerance: Option<Decimal>,
 ) -> Result<Response, ContractError> {
     assert_deadline(env.block.time.seconds(), deadline)?;
 
@@ -360,6 +370,12 @@ pub fn provide_liquidity(
                 })?,
                 funds: vec![],
             }));
+        }
+
+        if let Some(slippage_tolerance) = slippage_tolerance {
+            if remain_amount > deposits[i] * slippage_tolerance {
+                return Err(ContractError::MaxSlippageAssertion {});
+            }
         }
     }
 
