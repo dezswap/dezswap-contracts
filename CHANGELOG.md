@@ -1,3 +1,8 @@
+# 1.1.1
+
+## Bug fixes
+* [d2346d](https://github.com/dezswap/dezswap-contracts/pull/16/commits/d2346dde067c607f6bb48293ae10a6a65519d886) sort funds
+
 # 1.1.0
 
 ## New features
