@@ -272,7 +272,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> StdResult<Response> {
     )?;
 
     let mut messages: Vec<CosmosMsg> = vec![];
-    if !tmp_pair_info.assets[0].amount.is_zero() && !tmp_pair_info.assets[1].amount.is_zero() {
+    if !tmp_pair_info.assets[0].amount.is_zero() || !tmp_pair_info.assets[1].amount.is_zero() {
         let assets = [
             tmp_pair_info.assets[0].to_normal(deps.api)?,
             tmp_pair_info.assets[1].to_normal(deps.api)?,
