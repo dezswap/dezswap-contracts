@@ -257,11 +257,12 @@ dependencies = [
 
 [[package]]
 name = "dezswap"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
+ "cw2",
  "cw20",
  "protobuf",
  "schemars",
@@ -270,7 +271,7 @@ dependencies = [
 
 [[package]]
 name = "dezswap-factory"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -286,7 +287,7 @@ dependencies = [
 
 [[package]]
 name = "dezswap-pair"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",

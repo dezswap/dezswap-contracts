@@ -203,10 +203,7 @@ fn assert_minimum_receive(
     let swap_amount = receiver_balance.checked_sub(prev_balance)?;
 
     if swap_amount < minium_receive {
-        return Err(StdError::generic_err(format!(
-            "assertion failed; minimum receive amount: {}, swap amount: {}",
-            minium_receive, swap_amount
-        )));
+        return Err(StdError::generic_err(format!("assertion failed; minimum receive amount: {minium_receive}, swap amount: {swap_amount}")));
     }
 
     Ok(Response::default())

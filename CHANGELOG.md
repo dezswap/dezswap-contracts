@@ -1,3 +1,10 @@
+# 1.1.0
+
+## New features
+* [480621](https://github.com/dezswap/dezswap-contracts/pull/15/commits/4806214c4662af18c93af3e80b83755e51e538d8) create pair with provide liqudity
+* [e25201](https://github.com/dezswap/dezswap-contracts/pull/15/commits/e25201fb41ec31091e9db2e1de2380bf1919e336) applied minimum liqudity
+* [d0b347](https://github.com/dezswap/dezswap-contracts/pull/15/commits/d0b347fce24a9f1bfbdc24a225282965c0e75e3b) rebirth slippage_tolerance params
+
 # 1.0.0
 
 ## New features

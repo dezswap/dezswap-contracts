@@ -20,6 +20,7 @@ use dezswap::pair::{
 };
 use dezswap::querier::query_token_info;
 use dezswap::token::InstantiateMsg as TokenInstantiateMsg;
+use dezswap::util::migrate_version;
 use protobuf::Message;
 use std::cmp::Ordering;
 use std::convert::TryInto;
@@ -34,6 +35,8 @@ const INSTANTIATE_REPLY_ID: u64 = 1;
 
 /// Commission rate == 0.3%
 const COMMISSION_RATE: u64 = 3;
+
+const MINIMUM_LIQUIDITY_AMOUNT: u128 = 1_000;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -94,7 +97,16 @@ pub fn execute(
             assets,
             receiver,
             deadline,
-        } => provide_liquidity(deps, env, info, assets, receiver, deadline),
+            slippage_tolerance,
+        } => provide_liquidity(
+            deps,
+            env,
+            info,
+            assets,
+            receiver,
+            deadline,
+            slippage_tolerance,
+        ),
         ExecuteMsg::Swap {
             offer_asset,
             belief_price,
@@ -209,6 +221,10 @@ pub fn receive_cw20(
 /// This just stores the result for future query
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
+    if msg.id != INSTANTIATE_REPLY_ID {
+        return Err(StdError::generic_err("invalid reply msg"));
+    }
+
     let data = msg.result.unwrap().data.unwrap();
     let res: MsgInstantiateContractResponse =
         Message::parse_from_bytes(data.as_slice()).map_err(|_| {
@@ -233,6 +249,7 @@ pub fn provide_liquidity(
     assets: [Asset; 2],
     receiver: Option<String>,
     deadline: Option<u64>,
+    slippage_tolerance: Option<Decimal>,
 ) -> Result<Response, ContractError> {
     assert_deadline(env.block.time.seconds(), deadline)?;
 
@@ -271,12 +288,34 @@ pub fn provide_liquidity(
         // Initial share = collateral amount
         let deposit0: Uint256 = deposits[0].into();
         let deposit1: Uint256 = deposits[1].into();
-        match (Decimal256::from_ratio(deposit0.mul(deposit1), 1u8).sqrt() * Uint256::from(1u8))
-            .try_into()
+        let share: Uint128 = match (Decimal256::from_ratio(deposit0.mul(deposit1), 1u8).sqrt()
+            * Uint256::from(1u8))
+        .try_into()
         {
             Ok(share) => share,
             Err(e) => return Err(ContractError::ConversionOverflowError(e)),
-        }
+        };
+
+        // MINIMUM_LIQUIDITY_AMOUNT is for the contract's stake
+        messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: deps
+                .api
+                .addr_humanize(&pair_info.liquidity_token)?
+                .to_string(),
+            msg: to_binary(&Cw20ExecuteMsg::Mint {
+                recipient: env.contract.address.to_string(),
+                amount: MINIMUM_LIQUIDITY_AMOUNT.into(),
+            })?,
+            funds: vec![],
+        }));
+
+        // Deduct MINIMUM_LIQUIDITY_AMOUNT for the initial provider
+        share
+            .checked_sub(MINIMUM_LIQUIDITY_AMOUNT.into())
+            .map_err(|_| ContractError::MinimumLiquidityAmountError {
+                min_lp_token: MINIMUM_LIQUIDITY_AMOUNT.to_string(),
+                given_lp: share.to_string(),
+            })?
     } else {
         // min(1, 2)
         // 1. sqrt(deposit_0 * exchange_rate_0_to_1 * deposit_0) * (total_share / sqrt(pool_0 * pool_1))
@@ -295,6 +334,7 @@ pub fn provide_liquidity(
     }
 
     // refund of remaining native token & desired of token
+    let mut refund_assets: Vec<Asset> = vec![];
     for (i, pool) in pools.iter().enumerate() {
         let desired_amount = match total_share.is_zero() {
             true => deposits[i],
@@ -309,7 +349,10 @@ pub fn provide_liquidity(
         };
 
         let remain_amount = deposits[i] - desired_amount;
-
+        refund_assets.push(Asset {
+            info: pool.info.clone(),
+            amount: remain_amount,
+        });
         if let AssetInfo::NativeToken { denom, .. } = &pool.info {
             if !remain_amount.is_zero() {
                 messages.push(CosmosMsg::Bank(BankMsg::Send {
@@ -327,6 +370,12 @@ pub fn provide_liquidity(
                 })?,
                 funds: vec![],
             }));
+        }
+
+        if let Some(slippage_tolerance) = slippage_tolerance {
+            if remain_amount > deposits[i] * slippage_tolerance {
+                return Err(ContractError::MaxSlippageAssertion {});
+            }
         }
     }
 
@@ -350,6 +399,10 @@ pub fn provide_liquidity(
         ("receiver", receiver.as_str()),
         ("assets", &format!("{}, {}", assets[0], assets[1])),
         ("share", &share.to_string()),
+        (
+            "refund_assets",
+            &format!("{}, {}", refund_assets[0], refund_assets[1]),
+        ),
     ]))
 }
 
@@ -815,25 +868,15 @@ pub fn assert_deadline(blocktime: u64, deadline: Option<u64>) -> Result<(), Cont
     Ok(())
 }
 
-const TARGET_CONTRACT_VERSION: &str = "0.1.2";
+const TARGET_CONTRACT_VERSION: &str = "1.0.0";
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    let prev_version = cw2::get_contract_version(deps.as_ref().storage)?;
-
-    if prev_version.contract != CONTRACT_NAME {
-        return Err(ContractError::Std(StdError::generic_err(
-            "invalid contract",
-        )));
-    }
-
-    if prev_version.version != TARGET_CONTRACT_VERSION {
-        return Err(ContractError::Std(StdError::generic_err(format!(
-            "invalid contract version. target {}, but source is {}",
-            TARGET_CONTRACT_VERSION, prev_version.version
-        ))));
-    }
-
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    migrate_version(
+        deps,
+        TARGET_CONTRACT_VERSION,
+        CONTRACT_NAME,
+        CONTRACT_VERSION,
+    )?;
 
     Ok(Response::default())
 }
