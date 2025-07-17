@@ -28,13 +28,3 @@ protobuf = { version = "2", features = ["with-bytes"] }
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0" }
 
-[profile.release]
-opt-level = 3
-debug = false
-rpath = false
-lto = true
-debug-assertions = false
-codegen-units = 1
-panic = 'abort'
-incremental = false
-overflow-checks = true
