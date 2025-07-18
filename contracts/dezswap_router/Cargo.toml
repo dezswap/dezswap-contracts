@@ -26,7 +26,7 @@ library = []
 
 [dependencies]
 cw20 = { version = "0.13.2" } 
-cosmwasm-std = { version = "1.0.0" }
+cosmwasm-std = { version = "1.5.2" }
 dezswap = { path = "../../packages/dezswap", default-features = false, version = "1.0.0"}
 cw-storage-plus = { version = "0.13.2"}
 integer-sqrt = "0.1.5"
@@ -35,5 +35,5 @@ serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 cw2 = { version = "0.13.4" } 
 
 [dev-dependencies]
-cosmwasm-storage = { version = "1.0.0" }
-cosmwasm-schema = { version = "1.0.0" }
+cosmwasm-storage = { version = "1.5.2" }
+cosmwasm-schema = { version = "1.5.2" }

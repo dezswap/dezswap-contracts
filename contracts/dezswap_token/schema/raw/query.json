@@ -3,7 +3,6 @@
   "title": "QueryMsg",
   "oneOf": [
     {
-      "description": "Returns the current balance of the given address, 0 if unset. Return type: BalanceResponse.",
       "type": "object",
       "required": [
         "balance"
@@ -24,7 +23,6 @@
       "additionalProperties": false
     },
     {
-      "description": "Returns metadata on the contract - name, decimals, supply, etc. Return type: TokenInfoResponse.",
       "type": "object",
       "required": [
         "token_info"
@@ -37,20 +35,6 @@
       "additionalProperties": false
     },
     {
-      "description": "Only with \"mintable\" extension. Returns who can mint and the hard cap on maximum tokens after minting. Return type: MinterResponse.",
-      "type": "object",
-      "required": [
-        "minter"
-      ],
-      "properties": {
-        "minter": {
-          "type": "object"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Only with \"allowance\" extension. Returns how much spender can use from owner account, 0 if unset. Return type: AllowanceResponse.",
       "type": "object",
       "required": [
         "allowance"
@@ -75,7 +59,6 @@
       "additionalProperties": false
     },
     {
-      "description": "Only with \"enumerable\" extension (and \"allowances\") Returns all allowances this owner has approved. Supports pagination. Return type: AllAllowancesResponse.",
       "type": "object",
       "required": [
         "all_allowances"
@@ -110,7 +93,6 @@
       "additionalProperties": false
     },
     {
-      "description": "Only with \"enumerable\" extension Returns all accounts that have balances. Supports pagination. Return type: AllAccountsResponse.",
       "type": "object",
       "required": [
         "all_accounts"
@@ -134,32 +116,6 @@
               ]
             }
           }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Only with \"marketing\" extension Returns more metadata on the contract to display in the client: - description, logo, project url, etc. Return type: MarketingInfoResponse",
-      "type": "object",
-      "required": [
-        "marketing_info"
-      ],
-      "properties": {
-        "marketing_info": {
-          "type": "object"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Only with \"marketing\" extension Downloads the embedded logo data (if stored on chain). Errors if no logo data is stored for this contract. Return type: DownloadLogoResponse.",
-      "type": "object",
-      "required": [
-        "download_logo"
-      ],
-      "properties": {
-        "download_logo": {
-          "type": "object"
         }
       },
       "additionalProperties": false

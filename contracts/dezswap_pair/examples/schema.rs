@@ -1,27 +1,34 @@
 use std::env::current_dir;
 use std::fs::create_dir_all;
 
-use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
+use cosmwasm_schema::{remove_schemas, write_api, QueryResponses};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
-use dezswap::asset::PairInfo;
+use dezswap::asset::{Asset, PairInfo};
 use dezswap::pair::{
-    Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, PoolResponse, QueryMsg,
+    Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, PoolResponse,
     ReverseSimulationResponse, SimulationResponse,
 };
 
-fn main() {
-    let mut out_dir = current_dir().unwrap();
-    out_dir.push("schema");
-    create_dir_all(&out_dir).unwrap();
-    remove_schemas(&out_dir).unwrap();
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema, QueryResponses)]
+#[serde(rename_all = "snake_case")]
+pub enum LocalQueryMsg {
+    #[returns(PairInfo)]
+    Pair {},
+    #[returns(PoolResponse)]
+    Pool {},
+    #[returns(SimulationResponse)]
+    Simulation { offer_asset: Asset },
+    #[returns(ReverseSimulationResponse)]
+    ReverseSimulation { ask_asset: Asset },
+}
 
-    export_schema(&schema_for!(InstantiateMsg), &out_dir);
-    export_schema(&schema_for!(ExecuteMsg), &out_dir);
-    export_schema(&schema_for!(MigrateMsg), &out_dir);
-    export_schema(&schema_for!(Cw20HookMsg), &out_dir);
-    export_schema(&schema_for!(QueryMsg), &out_dir);
-    export_schema(&schema_for!(PairInfo), &out_dir);
-    export_schema(&schema_for!(PoolResponse), &out_dir);
-    export_schema(&schema_for!(ReverseSimulationResponse), &out_dir);
-    export_schema(&schema_for!(SimulationResponse), &out_dir);
+fn main() {
+    write_api! {
+        instantiate: InstantiateMsg,
+        execute: ExecuteMsg,
+        query: LocalQueryMsg,
+        migrate: MigrateMsg,
+    }
 }

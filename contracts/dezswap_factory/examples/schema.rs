@@ -1,23 +1,38 @@
 use std::env::current_dir;
 use std::fs::create_dir_all;
 
-use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
+use cosmwasm_schema::{remove_schemas, write_api, QueryResponses};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
-use dezswap::asset::PairInfo;
-use dezswap::factory::{ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, NativeTokenDecimalsResponse, PairsResponse, QueryMsg};
+use dezswap::factory::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, ConfigResponse, PairsResponse, NativeTokenDecimalsResponse};
+use dezswap::asset::{AssetInfo, PairInfo};
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema, QueryResponses)]
+#[serde(rename_all = "snake_case")]
+pub enum LocalQueryMsg {
+    #[returns(ConfigResponse)]
+    Config {},
+    #[returns(PairInfo)]
+    Pair {
+        asset_infos: [AssetInfo; 2],
+    },
+    #[returns(PairsResponse)]
+    Pairs {
+        start_after: Option<[AssetInfo; 2]>,
+        limit: Option<u32>,
+    },
+    #[returns(NativeTokenDecimalsResponse)]
+    NativeTokenDecimals {
+        denom: String,
+    },
+}
 
 fn main() {
-    let mut out_dir = current_dir().unwrap();
-    out_dir.push("schema");
-    create_dir_all(&out_dir).unwrap();
-    remove_schemas(&out_dir).unwrap();
-
-    export_schema(&schema_for!(InstantiateMsg), &out_dir);
-    export_schema(&schema_for!(ExecuteMsg), &out_dir);
-    export_schema(&schema_for!(QueryMsg), &out_dir);
-    export_schema(&schema_for!(MigrateMsg), &out_dir);
-    export_schema(&schema_for!(PairInfo), &out_dir);
-    export_schema(&schema_for!(PairsResponse), &out_dir);
-    export_schema(&schema_for!(ConfigResponse), &out_dir);
-    export_schema(&schema_for!(NativeTokenDecimalsResponse), &out_dir);
+    write_api! {
+        instantiate: InstantiateMsg,
+        execute: ExecuteMsg,
+        query: LocalQueryMsg,
+        migrate: MigrateMsg,
+    }
 }

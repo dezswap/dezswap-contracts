@@ -1,27 +1,44 @@
 use std::env::current_dir;
 use std::fs::create_dir_all;
 
-use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
+use cosmwasm_schema::{remove_schemas, write_api, QueryResponses};
+use cosmwasm_std::Uint128;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 use cw20::{
     AllAccountsResponse, AllAllowancesResponse, AllowanceResponse, BalanceResponse,
     TokenInfoResponse,
 };
-use cw20_base::msg::{ExecuteMsg, QueryMsg};
+use cw20_base::msg::ExecuteMsg;
 use dezswap::token::InstantiateMsg;
 
-fn main() {
-    let mut out_dir = current_dir().unwrap();
-    out_dir.push("schema");
-    create_dir_all(&out_dir).unwrap();
-    remove_schemas(&out_dir).unwrap();
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema, QueryResponses)]
+#[serde(rename_all = "snake_case")]
+pub enum LocalQueryMsg {
+    #[returns(BalanceResponse)]
+    Balance { address: String },
+    #[returns(TokenInfoResponse)]
+    TokenInfo {},
+    #[returns(AllowanceResponse)]
+    Allowance { owner: String, spender: String },
+    #[returns(AllAllowancesResponse)]
+    AllAllowances {
+        owner: String,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+    #[returns(AllAccountsResponse)]
+    AllAccounts {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+}
 
-    export_schema(&schema_for!(InstantiateMsg), &out_dir);
-    export_schema(&schema_for!(ExecuteMsg), &out_dir);
-    export_schema(&schema_for!(QueryMsg), &out_dir);
-    export_schema(&schema_for!(AllowanceResponse), &out_dir);
-    export_schema(&schema_for!(BalanceResponse), &out_dir);
-    export_schema(&schema_for!(TokenInfoResponse), &out_dir);
-    export_schema(&schema_for!(AllAllowancesResponse), &out_dir);
-    export_schema(&schema_for!(AllAccountsResponse), &out_dir);
+fn main() {
+    write_api! {
+        instantiate: InstantiateMsg,
+        execute: ExecuteMsg,
+        query: LocalQueryMsg,
+    }
 }
