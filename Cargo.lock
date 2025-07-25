@@ -634,16 +634,17 @@ dependencies = [
 
 [[package]]
 name = "cw20-base"
-version = "0.13.2"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b370e5fb6b35db58cabd7903b8f9bd4c3bcff701c63bf1a7185a84e60bfa502"
+checksum = "d6de8c32e100f1fca306972d86b617234a5e6b00594ea2b48716fd6804d4d95d"
 dependencies = [
- "cosmwasm-std 1.0.0",
- "cw-storage-plus 0.13.4",
- "cw-utils 0.13.4",
- "cw2 0.13.4",
- "cw20 0.13.4",
+ "cosmwasm-schema 2.2.2",
+ "cosmwasm-std 2.2.2",
+ "cw-storage-plus 2.0.0",
+ "cw2 2.0.0",
+ "cw20 2.0.0",
  "schemars",
+ "semver",
  "serde",
  "thiserror",
 ]
@@ -764,17 +765,14 @@ dependencies = [
 name = "dezswap-token"
 version = "0.0.0"
 dependencies = [
- "cosmwasm-schema 1.0.0",
- "cosmwasm-std 1.0.0",
- "cosmwasm-storage",
- "cw-storage-plus 0.13.4",
+ "cosmwasm-schema 2.2.2",
+ "cosmwasm-std 2.2.2",
+ "cw-storage-plus 2.0.0",
  "cw0",
- "cw2 0.13.4",
- "cw20 0.13.4",
+ "cw2 2.0.0",
+ "cw20 2.0.0",
  "cw20-base",
  "dezswap",
- "schemars",
- "serde",
  "thiserror",
 ]
 
