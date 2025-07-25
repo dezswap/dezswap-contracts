@@ -1,12 +1,11 @@
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use cosmwasm_schema::{cw_serde, QueryResponses};
 
-use crate::asset::{Asset, AssetInfo};
+use crate::asset::{Asset, AssetInfo, PairInfo};
 
 use cosmwasm_std::{Decimal, Uint128};
 use cw20::Cw20ReceiveMsg;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     /// Asset infos
     pub asset_infos: [AssetInfo; 2],
@@ -15,8 +14,7 @@ pub struct InstantiateMsg {
     pub asset_decimals: [u8; 2],
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     /// ProvideLiquidity a user provides pool liquidity
@@ -36,8 +34,7 @@ pub enum ExecuteMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum Cw20HookMsg {
     /// Sell a given amount of asset
     Swap {
@@ -52,24 +49,28 @@ pub enum Cw20HookMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(PairInfo)]
     Pair {},
+    #[returns(PoolResponse)]
     Pool {},
+    #[returns(SimulationResponse)]
     Simulation { offer_asset: Asset },
+    #[returns(ReverseSimulationResponse)]
     ReverseSimulation { ask_asset: Asset },
 }
 
 // We define a custom struct for each query response
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct PoolResponse {
     pub assets: [Asset; 2],
     pub total_share: Uint128,
 }
 
 /// SimulationResponse returns swap simulation response
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct SimulationResponse {
     pub return_amount: Uint128,
     pub spread_amount: Uint128,
@@ -77,7 +78,7 @@ pub struct SimulationResponse {
 }
 
 /// ReverseSimulationResponse returns reverse swap simulation response
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct ReverseSimulationResponse {
     pub offer_amount: Uint128,
     pub spread_amount: Uint128,
@@ -85,5 +86,5 @@ pub struct ReverseSimulationResponse {
 }
 
 /// We currently take no arguments for migrations
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct MigrateMsg {}

@@ -1,17 +1,15 @@
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use cosmwasm_schema::{cw_serde, QueryResponses};
 
 use crate::asset::{Asset, AssetInfo, PairInfo};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     /// Pair contract code ID, which is used to
     pub pair_code_id: u64,
     pub token_code_id: u64,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     /// UpdateConfig update relevant code IDs
     UpdateConfig {
@@ -33,24 +31,28 @@ pub enum ExecuteMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(ConfigResponse)]
     Config {},
+    #[returns(PairInfo)]
     Pair {
         asset_infos: [AssetInfo; 2],
     },
+    #[returns(PairsResponse)]
     Pairs {
         start_after: Option<[AssetInfo; 2]>,
         limit: Option<u32>,
     },
+    #[returns(NativeTokenDecimalsResponse)]
     NativeTokenDecimals {
         denom: String,
     },
 }
 
 // We define a custom struct for each query response
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct ConfigResponse {
     pub owner: String,
     pub pair_code_id: u64,
@@ -58,16 +60,16 @@ pub struct ConfigResponse {
 }
 
 /// We currently take no arguments for migrations
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct MigrateMsg {}
 
 // We define a custom struct for each query response
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct PairsResponse {
     pub pairs: Vec<PairInfo>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct NativeTokenDecimalsResponse {
     pub decimals: u8,
 }
