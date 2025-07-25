@@ -9,7 +9,8 @@
       ],
       "properties": {
         "pair": {
-          "type": "object"
+          "type": "object",
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -21,7 +22,8 @@
       ],
       "properties": {
         "pool": {
-          "type": "object"
+          "type": "object",
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -41,7 +43,8 @@
             "offer_asset": {
               "$ref": "#/definitions/Asset"
             }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -61,7 +64,8 @@
             "ask_asset": {
               "$ref": "#/definitions/Asset"
             }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -81,7 +85,8 @@
         "info": {
           "$ref": "#/definitions/AssetInfo"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "AssetInfo": {
       "description": "AssetInfo contract_addr is usually passed from the cw20 hook so we can trust the contract_addr is properly validated.",
@@ -101,7 +106,8 @@
                 "contract_addr": {
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -121,7 +127,8 @@
                 "denom": {
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
