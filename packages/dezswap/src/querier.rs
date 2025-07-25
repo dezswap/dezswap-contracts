@@ -3,8 +3,8 @@ use crate::factory::{NativeTokenDecimalsResponse, QueryMsg as FactoryQueryMsg};
 use crate::pair::{QueryMsg as PairQueryMsg, ReverseSimulationResponse, SimulationResponse};
 
 use cosmwasm_std::{
-    to_json_binary, Addr, BalanceResponse, BankQuery, QuerierWrapper,
-    QueryRequest, StdResult, Uint128, WasmQuery,
+    to_json_binary, Addr, BalanceResponse, BankQuery, QuerierWrapper, QueryRequest, StdResult,
+    Uint128, WasmQuery,
 };
 
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg, TokenInfoResponse};

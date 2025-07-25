@@ -1,8 +1,6 @@
 use crate::asset::{Asset, AssetInfo, AssetInfoRaw, AssetRaw, PairInfo};
 use crate::mock_querier::mock_dependencies;
-use crate::querier::{
-    query_balance, query_pair_info, query_token_balance, query_token_info,
-};
+use crate::querier::{query_balance, query_pair_info, query_token_balance, query_token_info};
 
 use cosmwasm_std::testing::MOCK_CONTRACT_ADDR;
 use cosmwasm_std::{

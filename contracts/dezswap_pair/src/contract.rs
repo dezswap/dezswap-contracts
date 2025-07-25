@@ -1,14 +1,11 @@
 use crate::error::ContractError;
-use crate::response::MsgInstantiateContractResponse;
 use crate::state::PAIR_INFO;
 
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
+use cosmwasm_std::{entry_point, instantiate2_address};
 
 use cosmwasm_std::{
-    coins, from_binary, to_binary, Addr, BankMsg, Binary, CanonicalAddr, CosmosMsg, Decimal,
-    Decimal256, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn, Response, StdError, StdResult,
-    SubMsg, Uint128, Uint256, WasmMsg,
+    coins, from_json, to_json_binary, Addr, BankMsg, Binary, CosmosMsg, Decimal, Decimal256, Deps,
+    DepsMut, Env, MessageInfo, Response, StdResult, Uint128, Uint256, WasmMsg,
 };
 
 use cw2::set_contract_version;
@@ -21,7 +18,7 @@ use dezswap::pair::{
 use dezswap::querier::query_token_info;
 use dezswap::token::InstantiateMsg as TokenInstantiateMsg;
 use dezswap::util::migrate_version;
-use protobuf::Message;
+use sha2::{Digest, Sha256};
 use std::cmp::Ordering;
 use std::convert::TryInto;
 use std::ops::Mul;
@@ -31,14 +28,12 @@ use std::str::FromStr;
 const CONTRACT_NAME: &str = "crates.io:dezswap-pair";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const INSTANTIATE_REPLY_ID: u64 = 1;
-
 /// Commission rate == 0.3%
 const COMMISSION_RATE: u64 = 3;
 
 const MINIMUM_LIQUIDITY_AMOUNT: u128 = 1_000;
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[entry_point]
 pub fn instantiate(
     deps: DepsMut,
     env: Env,
@@ -47,9 +42,31 @@ pub fn instantiate(
 ) -> StdResult<Response> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
+    let code_info = deps
+        .querier
+        .query_wasm_code_info(msg.token_code_id)
+        .unwrap();
+    let seed = format!("{}{}", msg.asset_infos[0], msg.asset_infos[1]);
+
+    let mut hasher = Sha256::new();
+    hasher.update(seed.as_bytes());
+    let salt = hasher.finalize();
+
+    let canonicalize_creator = deps
+        .api
+        .addr_canonicalize(env.contract.address.as_str())
+        .unwrap();
+
+    let predict_lp_contract_addr = instantiate2_address(
+        code_info.checksum.as_slice(),
+        &canonicalize_creator,
+        salt.as_slice(),
+    )
+    .unwrap();
+
     let pair_info: &PairInfoRaw = &PairInfoRaw {
-        contract_addr: deps.api.addr_canonicalize(env.contract.address.as_str())?,
-        liquidity_token: CanonicalAddr::from(vec![]),
+        contract_addr: canonicalize_creator,
+        liquidity_token: predict_lp_contract_addr.clone(),
         asset_infos: [
             msg.asset_infos[0].to_raw(deps.api)?,
             msg.asset_infos[1].to_raw(deps.api)?,
@@ -59,32 +76,32 @@ pub fn instantiate(
 
     PAIR_INFO.save(deps.storage, pair_info)?;
 
-    Ok(Response::new().add_submessage(SubMsg {
-        // Create LP token
-        msg: WasmMsg::Instantiate {
-            admin: None,
-            code_id: msg.token_code_id,
-            msg: to_binary(&TokenInstantiateMsg {
-                name: "dezswap liquidity token".to_string(),
-                symbol: "uLP".to_string(),
-                decimals: 6,
-                initial_balances: vec![],
-                mint: Some(MinterResponse {
-                    minter: env.contract.address.to_string(),
-                    cap: None,
-                }),
-            })?,
-            funds: vec![],
-            label: "lp".to_string(),
-        }
-        .into(),
-        gas_limit: None,
-        id: INSTANTIATE_REPLY_ID,
-        reply_on: ReplyOn::Success,
-    }))
+    let liquidity_token_addr = deps.api.addr_humanize(&predict_lp_contract_addr).unwrap();
+    Ok(Response::new()
+        .add_message(
+            // Create LP token
+            CosmosMsg::Wasm(WasmMsg::Instantiate2 {
+                admin: None,
+                code_id: msg.token_code_id,
+                msg: to_json_binary(&TokenInstantiateMsg {
+                    name: "dezswap liquidity token".to_string(),
+                    symbol: "uLP".to_string(),
+                    decimals: 6,
+                    initial_balances: vec![],
+                    mint: Some(MinterResponse {
+                        minter: env.contract.address.to_string(),
+                        cap: None,
+                    }),
+                })?,
+                funds: vec![],
+                label: "lp".to_string(),
+                salt: Binary::from(salt.as_slice()),
+            }),
+        )
+        .add_attribute("liquidity_token_addr", liquidity_token_addr.to_string()))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[entry_point]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -147,7 +164,7 @@ pub fn receive_cw20(
 ) -> Result<Response, ContractError> {
     let contract_addr = info.sender.clone();
 
-    match from_binary(&cw20_msg.msg) {
+    match from_json(&cw20_msg.msg) {
         Ok(Cw20HookMsg::Swap {
             belief_price,
             max_spread,
@@ -161,7 +178,8 @@ pub fn receive_cw20(
                 config.query_pools(&deps.querier, deps.api, env.contract.address.clone())?;
             for pool in pools.iter() {
                 if let AssetInfo::Token { contract_addr, .. } = &pool.info {
-                    if contract_addr == &info.sender {
+                    let contract_addr = deps.api.addr_validate(contract_addr)?;
+                    if contract_addr == info.sender {
                         authorized = true;
                     }
                 }
@@ -218,29 +236,6 @@ pub fn receive_cw20(
     }
 }
 
-/// This just stores the result for future query
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
-    if msg.id != INSTANTIATE_REPLY_ID {
-        return Err(StdError::generic_err("invalid reply msg"));
-    }
-
-    let data = msg.result.unwrap().data.unwrap();
-    let res: MsgInstantiateContractResponse =
-        Message::parse_from_bytes(data.as_slice()).map_err(|_| {
-            StdError::parse_err("MsgInstantiateContractResponse", "failed to parse data")
-        })?;
-    let liquidity_token = res.get_address();
-
-    let api = deps.api;
-    PAIR_INFO.update(deps.storage, |mut meta| -> StdResult<_> {
-        meta.liquidity_token = api.addr_canonicalize(liquidity_token)?;
-        Ok(meta)
-    })?;
-
-    Ok(Response::new().add_attribute("liquidity_token_addr", liquidity_token))
-}
-
 /// CONTRACT - should approve contract to use the amount of token
 pub fn provide_liquidity(
     deps: DepsMut,
@@ -288,9 +283,9 @@ pub fn provide_liquidity(
         // Initial share = collateral amount
         let deposit0: Uint256 = deposits[0].into();
         let deposit1: Uint256 = deposits[1].into();
-        let share: Uint128 = match (Decimal256::from_ratio(deposit0.mul(deposit1), 1u8).sqrt()
-            * Uint256::from(1u8))
-        .try_into()
+        let share: Uint128 = match Uint256::from(1u8)
+            .mul_floor(Decimal256::from_ratio(deposit0.mul(deposit1), 1u8).sqrt())
+            .try_into()
         {
             Ok(share) => share,
             Err(e) => return Err(ContractError::ConversionOverflowError(e)),
@@ -302,7 +297,7 @@ pub fn provide_liquidity(
                 .api
                 .addr_humanize(&pair_info.liquidity_token)?
                 .to_string(),
-            msg: to_binary(&Cw20ExecuteMsg::Mint {
+            msg: to_json_binary(&Cw20ExecuteMsg::Mint {
                 recipient: env.contract.address.to_string(),
                 amount: MINIMUM_LIQUIDITY_AMOUNT.into(),
             })?,
@@ -363,7 +358,7 @@ pub fn provide_liquidity(
         } else if let AssetInfo::Token { contract_addr, .. } = &pool.info {
             messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: contract_addr.to_string(),
-                msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
+                msg: to_json_binary(&Cw20ExecuteMsg::TransferFrom {
                     owner: info.sender.to_string(),
                     recipient: env.contract.address.to_string(),
                     amount: desired_amount,
@@ -373,7 +368,7 @@ pub fn provide_liquidity(
         }
 
         if let Some(slippage_tolerance) = slippage_tolerance {
-            if remain_amount > deposits[i] * slippage_tolerance {
+            if remain_amount > deposits[i].mul_floor(slippage_tolerance) {
                 return Err(ContractError::MaxSlippageAssertion {});
             }
         }
@@ -386,7 +381,7 @@ pub fn provide_liquidity(
             .api
             .addr_humanize(&pair_info.liquidity_token)?
             .to_string(),
-        msg: to_binary(&Cw20ExecuteMsg::Mint {
+        msg: to_json_binary(&Cw20ExecuteMsg::Mint {
             recipient: receiver.to_string(),
             amount: share,
         })?,
@@ -428,7 +423,7 @@ pub fn withdraw_liquidity(
         .iter()
         .map(|a| Asset {
             info: a.info.clone(),
-            amount: a.amount * share_ratio,
+            amount: a.amount.mul_floor(share_ratio),
         })
         .collect();
 
@@ -445,7 +440,7 @@ pub fn withdraw_liquidity(
                     .api
                     .addr_humanize(&pair_info.liquidity_token)?
                     .to_string(),
-                msg: to_binary(&Cw20ExecuteMsg::Burn { amount })?,
+                msg: to_json_binary(&Cw20ExecuteMsg::Burn { amount })?,
                 funds: vec![],
             }),
         ])
@@ -552,16 +547,16 @@ pub fn swap(
     ]))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[entry_point]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
-        QueryMsg::Pair {} => Ok(to_binary(&query_pair_info(deps)?)?),
-        QueryMsg::Pool {} => Ok(to_binary(&query_pool(deps)?)?),
+        QueryMsg::Pair {} => Ok(to_json_binary(&query_pair_info(deps)?)?),
+        QueryMsg::Pool {} => Ok(to_json_binary(&query_pool(deps)?)?),
         QueryMsg::Simulation { offer_asset } => {
-            Ok(to_binary(&query_simulation(deps, offer_asset)?)?)
+            Ok(to_json_binary(&query_simulation(deps, offer_asset)?)?)
         }
         QueryMsg::ReverseSimulation { ask_asset } => {
-            Ok(to_binary(&query_reverse_simulation(deps, ask_asset)?)?)
+            Ok(to_json_binary(&query_reverse_simulation(deps, ask_asset)?)?)
         }
     }
 }
@@ -670,14 +665,14 @@ fn compute_swap(
 
     // calculate spread & commission
     let before_spread_deduction: Uint256 =
-        offer_amount * Decimal256::from_ratio(ask_pool, offer_pool);
+        offer_amount.mul_floor(Decimal256::from_ratio(ask_pool, offer_pool));
     let spread_amount = if before_spread_deduction > return_amount {
         before_spread_deduction - return_amount
     } else {
         Uint256::zero()
     };
-    let mut commission_amount: Uint256 = return_amount * commission_rate;
-    if return_amount != (commission_amount * (Decimal256::one() / commission_rate)) {
+    let mut commission_amount: Uint256 = return_amount.mul_floor(commission_rate);
+    if return_amount != (commission_amount.mul_floor(Decimal256::one() / commission_rate)) {
         commission_amount += Uint256::from(1u128);
     }
     // commission will be absorbed to pool
@@ -719,8 +714,8 @@ fn compute_offer_amount(
 
     let one_minus_commission = Decimal256::one() - commission_rate;
     let inv_one_minus_commission = Decimal256::one() / one_minus_commission;
-    let mut before_commission_deduction: Uint256 = ask_amount * inv_one_minus_commission;
-    if before_commission_deduction * one_minus_commission != ask_amount {
+    let mut before_commission_deduction: Uint256 = ask_amount.mul_floor(inv_one_minus_commission);
+    if before_commission_deduction.mul_floor(one_minus_commission) != ask_amount {
         before_commission_deduction += Uint256::from(1u8);
     }
 
@@ -734,7 +729,7 @@ fn compute_offer_amount(
     let offer_amount: Uint256 = after_offer_pool - offer_pool;
 
     let before_spread_deduction: Uint256 =
-        offer_amount * Decimal256::from_ratio(ask_pool, offer_pool);
+        offer_amount.mul_floor(Decimal256::from_ratio(ask_pool, offer_pool));
 
     let spread_amount = if before_spread_deduction > before_commission_deduction {
         before_spread_deduction - before_commission_deduction
@@ -802,7 +797,7 @@ pub fn assert_max_spread(
         let belief_price: Decimal256 = Decimal256::from_str(&belief_price.to_string())?;
         let max_spread: Decimal256 = Decimal256::from_str(&max_spread.to_string())?;
 
-        let expected_return = offer_amount * (Decimal256::one() / belief_price);
+        let expected_return = offer_amount.mul_floor(Decimal256::one() / belief_price);
         let spread_amount = if expected_return > return_amount {
             expected_return - return_amount
         } else {
@@ -868,8 +863,8 @@ pub fn assert_deadline(blocktime: u64, deadline: Option<u64>) -> Result<(), Cont
     Ok(())
 }
 
-const TARGET_CONTRACT_VERSION: &str = "1.0.0";
-#[cfg_attr(not(feature = "library"), entry_point)]
+const TARGET_CONTRACT_VERSION: &str = "1.1.0";
+#[entry_point]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     migrate_version(
         deps,

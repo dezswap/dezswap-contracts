@@ -37,18 +37,14 @@ pub enum QueryMsg {
     #[returns(ConfigResponse)]
     Config {},
     #[returns(PairInfo)]
-    Pair {
-        asset_infos: [AssetInfo; 2],
-    },
+    Pair { asset_infos: [AssetInfo; 2] },
     #[returns(PairsResponse)]
     Pairs {
         start_after: Option<[AssetInfo; 2]>,
         limit: Option<u32>,
     },
     #[returns(NativeTokenDecimalsResponse)]
-    NativeTokenDecimals {
-        denom: String,
-    },
+    NativeTokenDecimals { denom: String },
 }
 
 // We define a custom struct for each query response

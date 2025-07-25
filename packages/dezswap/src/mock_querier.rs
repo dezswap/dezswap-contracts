@@ -1,8 +1,9 @@
 use cosmwasm_std::testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR};
 use cosmwasm_std::{
-    from_json, to_json_binary, Coin, ContractResult, Empty, OwnedDeps, Querier, QuerierResult,
-    QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
+    from_json, to_json_binary, Binary, Checksum, Coin, ContractResult, Empty, OwnedDeps, Querier,
+    QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
 };
+
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::panic;
@@ -251,6 +252,16 @@ impl WasmMockQuerier {
                     }
                 }
             },
+            QueryRequest::Wasm(WasmQuery::CodeInfo { code_id }) => {
+                // Create CodeInfoResponse JSON manually to avoid non-exhaustive struct issues
+                let json_response = format!(
+                    r#"{{"code_id":{},"creator":"{}","checksum":"{}"}}"#,
+                    code_id,
+                    MOCK_CONTRACT_ADDR,
+                    Checksum::generate(&[1, 2, 3, 4]).to_hex()
+                );
+                SystemResult::Ok(ContractResult::Ok(Binary::from(json_response.as_bytes())))
+            }
             _ => self.base.handle_query(request),
         }
     }
