@@ -1,21 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ExecuteMsg",
+  "title": "Cw20HookMsg",
   "oneOf": [
     {
-      "type": "object",
-      "required": [
-        "receive"
-      ],
-      "properties": {
-        "receive": {
-          "$ref": "#/definitions/Cw20ReceiveMsg"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Execute multiple BuyOperation",
       "type": "object",
       "required": [
         "execute_swap_operations"
@@ -57,75 +44,8 @@
                 "null"
               ]
             }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Internal use Swap all offer tokens to ask token",
-      "type": "object",
-      "required": [
-        "execute_swap_operation"
-      ],
-      "properties": {
-        "execute_swap_operation": {
-          "type": "object",
-          "required": [
-            "operation"
-          ],
-          "properties": {
-            "deadline": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "format": "uint64",
-              "minimum": 0.0
-            },
-            "operation": {
-              "$ref": "#/definitions/SwapOperation"
-            },
-            "to": {
-              "type": [
-                "string",
-                "null"
-              ]
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Internal use Check the swap amount is exceed minimum_receive",
-      "type": "object",
-      "required": [
-        "assert_minimum_receive"
-      ],
-      "properties": {
-        "assert_minimum_receive": {
-          "type": "object",
-          "required": [
-            "asset_info",
-            "minimum_receive",
-            "prev_balance",
-            "receiver"
-          ],
-          "properties": {
-            "asset_info": {
-              "$ref": "#/definitions/AssetInfo"
-            },
-            "minimum_receive": {
-              "$ref": "#/definitions/Uint128"
-            },
-            "prev_balance": {
-              "$ref": "#/definitions/Uint128"
-            },
-            "receiver": {
-              "type": "string"
-            }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -150,7 +70,8 @@
                 "contract_addr": {
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -170,36 +91,13 @@
                 "denom": {
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
         }
       ]
-    },
-    "Binary": {
-      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
-      "type": "string"
-    },
-    "Cw20ReceiveMsg": {
-      "description": "Cw20ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
-      "type": "object",
-      "required": [
-        "amount",
-        "msg",
-        "sender"
-      ],
-      "properties": {
-        "amount": {
-          "$ref": "#/definitions/Uint128"
-        },
-        "msg": {
-          "$ref": "#/definitions/Binary"
-        },
-        "sender": {
-          "type": "string"
-        }
-      }
     },
     "SwapOperation": {
       "oneOf": [
@@ -222,7 +120,8 @@
                 "offer_asset_info": {
                   "$ref": "#/definitions/AssetInfo"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false

@@ -9,7 +9,8 @@
       ],
       "properties": {
         "config": {
-          "type": "object"
+          "type": "object",
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -36,7 +37,8 @@
                 "$ref": "#/definitions/SwapOperation"
               }
             }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -63,7 +65,8 @@
                 "$ref": "#/definitions/SwapOperation"
               }
             }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -88,7 +91,8 @@
                 "contract_addr": {
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -108,7 +112,8 @@
                 "denom": {
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -136,7 +141,8 @@
                 "offer_asset_info": {
                   "$ref": "#/definitions/AssetInfo"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false

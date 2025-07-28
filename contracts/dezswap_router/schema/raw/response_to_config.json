@@ -9,5 +9,6 @@
     "dezswap_factory": {
       "type": "string"
     }
-  }
+  },
+  "additionalProperties": false
 }
