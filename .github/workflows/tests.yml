@@ -11,7 +11,7 @@ jobs:
     name: Actions - clippy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
       - uses: actions-rs/toolchain@v1
@@ -27,7 +27,7 @@ jobs:
     name: Actions - rustfmt
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
       - uses: actions-rs/toolchain@v1
@@ -45,7 +45,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
       - uses: actions-rs/toolchain@v1
@@ -64,8 +64,8 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
-      - uses: actions/cache@v2
+        uses: actions/checkout@v4
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin
@@ -82,10 +82,15 @@ jobs:
           toolchain: stable
           override: true
 
+      - name: Install OpenSSL libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libssl1.1
+
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
-          version: '0.15.0'
+          version: '0.18.0'
           args: '-- --test-threads 1'
 
       - name: Upload to codecov.io
