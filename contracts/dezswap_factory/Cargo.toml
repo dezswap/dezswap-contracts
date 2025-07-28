@@ -36,11 +36,7 @@ dezswap = { path = "../../packages/dezswap", default-features = false, version =
 cosmwasm-std = { version = "2.2.2", features = ["cosmwasm_2_0"] }
 cw-storage-plus = { version = "2.0.0" } 
 cw2 = { version = "2.0.0" } 
-schemars = "0.8.10"
-serde = { version = "1.0.103", default-features = false, features = ["derive"] }
-protobuf = { version = "2", features = ["with-bytes"] }
 cw20 = { version = "2.0.0" }
 sha2 = "0.10.7"
-
-[dev-dependencies]
 cosmwasm-schema = { version = "2.2.2" }
+

@@ -1,11 +1,9 @@
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Api, CanonicalAddr, Order, StdResult, Storage};
 use cw_storage_plus::{Bound, Item, Map};
 use dezswap::asset::{AssetInfoRaw, AssetRaw, PairInfo, PairInfoRaw};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct Config {
     pub owner: CanonicalAddr,
     pub pair_code_id: u64,
@@ -14,7 +12,7 @@ pub struct Config {
 
 pub const CONFIG: Item<Config> = Item::new("config");
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct TmpPairInfo {
     pub pair_key: Vec<u8>,
     pub assets: [AssetRaw; 2],
