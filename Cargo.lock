@@ -687,8 +687,6 @@ dependencies = [
  "cw20",
  "dezswap",
  "integer-sqrt",
- "schemars",
- "serde",
 ]
 
 [[package]]

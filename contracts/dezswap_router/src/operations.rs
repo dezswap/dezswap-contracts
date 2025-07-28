@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    to_binary, Addr, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdError,
-    StdResult, WasmMsg,
+    to_json_binary, Addr, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Response,
+    StdError, StdResult, WasmMsg,
 };
 
 use crate::state::{Config, CONFIG};
@@ -82,7 +82,7 @@ pub fn asset_into_swap_msg(
                 denom,
                 amount: offer_asset.amount,
             }],
-            msg: to_binary(&PairExecuteMsg::Swap {
+            msg: to_json_binary(&PairExecuteMsg::Swap {
                 offer_asset,
                 belief_price: None,
                 max_spread,
@@ -93,10 +93,10 @@ pub fn asset_into_swap_msg(
         AssetInfo::Token { contract_addr } => Ok(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr,
             funds: vec![],
-            msg: to_binary(&Cw20ExecuteMsg::Send {
+            msg: to_json_binary(&Cw20ExecuteMsg::Send {
                 contract: pair_contract.to_string(),
                 amount: offer_asset.amount,
-                msg: to_binary(&PairExecuteMsg::Swap {
+                msg: to_json_binary(&PairExecuteMsg::Swap {
                     offer_asset,
                     belief_price: None,
                     max_spread,
