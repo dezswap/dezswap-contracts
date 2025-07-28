@@ -64,7 +64,7 @@ Or for a production-ready (compressed) build, run the following from the reposit
 docker run --rm -v "$(pwd)":/code \
   --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-  cosmwasm/workspace-optimizer:0.12.8
+  cosmwasm/workspace-optimizer:0.17.0
 ```
 
 The optimized contracts are generated in the artifacts/ directory.
