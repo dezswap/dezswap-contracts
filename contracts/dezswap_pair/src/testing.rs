@@ -193,7 +193,7 @@ fn provide_liquidity() {
     );
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-    let liquidity_to_contract_msg = res.messages.get(0).expect("no message");
+    let liquidity_to_contract_msg = res.messages.first().expect("no message");
     let transfer_from_msg = res.messages.get(1).expect("no message");
     let mint_msg = res.messages.get(2).expect("no message");
 
@@ -346,7 +346,7 @@ fn provide_liquidity() {
     );
 
     let res: Response = execute(deps.as_mut(), env, info, msg).unwrap();
-    let refund_msg = res.messages.get(0).expect("no message");
+    let refund_msg = res.messages.first().expect("no message");
     let transfer_from_msg = res.messages.get(1).expect("no message");
     let mint_msg = res.messages.get(2).expect("no message");
 
@@ -471,7 +471,7 @@ fn provide_liquidity() {
         }],
     );
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-    let transfer_from_msg = res.messages.get(0).expect("no message");
+    let transfer_from_msg = res.messages.first().expect("no message");
     let mint_msg = res.messages.get(1).expect("no message");
     assert_eq!(
         transfer_from_msg,
@@ -530,7 +530,7 @@ fn withdraw_liquidity() {
         (
             &pair_info.liquidity_token.to_string(),
             &[(
-                &&deps.api.addr_make("addr0000").to_string(),
+                &deps.api.addr_make("addr0000").to_string(),
                 &Uint128::from(100u128),
             )],
         ),
@@ -556,7 +556,7 @@ fn withdraw_liquidity() {
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     let log_withdrawn_share = res.attributes.get(2).expect("no log");
     let log_refund_assets = res.attributes.get(3).expect("no log");
-    let msg_refund_0 = res.messages.get(0).expect("no message");
+    let msg_refund_0 = res.messages.first().expect("no message");
     let msg_refund_1 = res.messages.get(1).expect("no message");
     let msg_burn_liquidity = res.messages.get(2).expect("no message");
     assert_eq!(
@@ -601,10 +601,7 @@ fn withdraw_liquidity() {
         log_refund_assets,
         &attr(
             "refund_assets",
-            format!(
-                "100uusd, 100{}",
-                deps.api.addr_make("asset0000").to_string()
-            )
+            format!("100uusd, 100{}", deps.api.addr_make("asset0000"))
         )
     );
 
@@ -725,7 +722,7 @@ fn try_native_to_token() {
         }],
     );
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-    let msg_transfer = res.messages.get(0).expect("no message");
+    let msg_transfer = res.messages.first().expect("no message");
 
     // current price is 1.5, so expected return without spread is 1000
     // 952.380952 = 20000 - 20000 * 30000 / (30000 + 1500)
@@ -795,8 +792,8 @@ fn try_native_to_token() {
         res.attributes,
         vec![
             attr("action", "swap"),
-            attr("sender", &deps.api.addr_make("addr0000")),
-            attr("receiver", &deps.api.addr_make("addr0000")),
+            attr("sender", deps.api.addr_make("addr0000")),
+            attr("receiver", deps.api.addr_make("addr0000")),
             attr("offer_asset", "uusd"),
             attr("ask_asset", deps.api.addr_make("asset0000").to_string()),
             attr("offer_amount", offer_amount.to_string()),
@@ -903,7 +900,7 @@ fn try_token_to_native() {
     let info = message_info(&deps.api.addr_make("asset0000"), &[]);
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-    let msg_transfer = res.messages.get(0).expect("no message");
+    let msg_transfer = res.messages.first().expect("no message");
 
     // current price is 1.5, so expected return without spread is 1000
     // 952.380952 = 20000 - 20000 * 30000 / (30000 + 1500)
@@ -975,8 +972,8 @@ fn try_token_to_native() {
         res.attributes,
         vec![
             attr("action", "swap"),
-            attr("sender", &deps.api.addr_make("addr0000")),
-            attr("receiver", &deps.api.addr_make("addr0000")),
+            attr("sender", deps.api.addr_make("addr0000")),
+            attr("receiver", deps.api.addr_make("addr0000")),
             attr("offer_asset", deps.api.addr_make("asset0000").to_string()),
             attr("ask_asset", "uusd"),
             attr("offer_amount", offer_amount.to_string()),

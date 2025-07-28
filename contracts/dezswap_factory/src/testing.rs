@@ -164,10 +164,7 @@ fn create_pair() {
         res.attributes,
         vec![
             attr("action", "create_pair"),
-            attr(
-                "pair",
-                format!("uusd-{}", deps.api.addr_make("asset0001").to_string())
-            )
+            attr("pair", format!("uusd-{}", deps.api.addr_make("asset0001")))
         ]
     );
     assert_eq!(

@@ -30,7 +30,7 @@ fn proper_initialization() {
 
     // it worked, let's query the state
     let config: ConfigResponse =
-        from_json(&query(deps.as_ref(), mock_env(), QueryMsg::Config {}).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), mock_env(), QueryMsg::Config {}).unwrap()).unwrap();
     assert_eq!(
         deps.api.addr_make("dezswapfactory").to_string(),
         config.dezswap_factory.as_str()
@@ -283,7 +283,7 @@ fn execute_swap_operation() {
 
     deps.querier.with_dezswap_factory(
         &[(
-            &format!("uusd{}", deps.api.addr_make("asset0000").to_string()),
+            &format!("uusd{}", deps.api.addr_make("asset0000")),
             &PairInfo {
                 asset_infos: [
                     AssetInfo::NativeToken {
@@ -387,7 +387,7 @@ fn execute_swap_operation() {
     );
     deps.querier.with_dezswap_factory(
         &[(
-            &format!("{}uusd", deps.api.addr_make("asset0000").to_string()),
+            &format!("{}uusd", deps.api.addr_make("asset0000")),
             &PairInfo {
                 asset_infos: [
                     AssetInfo::Token {
@@ -489,7 +489,7 @@ fn query_buy_with_routes() {
     deps.querier.with_dezswap_factory(
         &[
             (
-                &format!("ukrw{}", deps.api.addr_make("asset0000").to_string()),
+                &format!("ukrw{}", deps.api.addr_make("asset0000")),
                 &PairInfo {
                     asset_infos: [
                         AssetInfo::NativeToken {
@@ -505,7 +505,7 @@ fn query_buy_with_routes() {
                 },
             ),
             (
-                &format!("{}uluna", deps.api.addr_make("asset0000").to_string()),
+                &format!("{}uluna", deps.api.addr_make("asset0000")),
                 &PairInfo {
                     asset_infos: [
                         AssetInfo::Token {
@@ -525,7 +525,7 @@ fn query_buy_with_routes() {
     );
 
     let res: SimulateSwapOperationsResponse =
-        from_json(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
     assert_eq!(
         res,
         SimulateSwapOperationsResponse {
@@ -578,7 +578,7 @@ fn query_reverse_routes_with_from_native() {
     deps.querier.with_dezswap_factory(
         &[
             (
-                &format!("ukrw{}", deps.api.addr_make("asset0000").to_string()),
+                &format!("ukrw{}", deps.api.addr_make("asset0000")),
                 &PairInfo {
                     contract_addr: deps.api.addr_make("pair0000").to_string(),
                     liquidity_token: deps.api.addr_make("liquidity0000").to_string(),
@@ -594,7 +594,7 @@ fn query_reverse_routes_with_from_native() {
                 },
             ),
             (
-                &format!("{}uluna", deps.api.addr_make("asset0000").to_string()),
+                &format!("{}uluna", deps.api.addr_make("asset0000")),
                 &PairInfo {
                     contract_addr: deps.api.addr_make("pair0001").to_string(),
                     liquidity_token: deps.api.addr_make("liquidity0001").to_string(),
@@ -614,7 +614,7 @@ fn query_reverse_routes_with_from_native() {
     );
 
     let res: SimulateSwapOperationsResponse =
-        from_json(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
     assert_eq!(
         res,
@@ -716,7 +716,7 @@ fn query_reverse_routes_with_to_native() {
     deps.querier.with_dezswap_factory(
         &[
             (
-                &format!("ukrw{}", deps.api.addr_make("asset0000").to_string()),
+                &format!("ukrw{}", deps.api.addr_make("asset0000")),
                 &PairInfo {
                     contract_addr: deps.api.addr_make("pair0000").to_string(),
                     liquidity_token: deps.api.addr_make("liquidity0000").to_string(),
@@ -732,7 +732,7 @@ fn query_reverse_routes_with_to_native() {
                 },
             ),
             (
-                &format!("{}uluna", deps.api.addr_make("asset0000").to_string()),
+                &format!("{}uluna", deps.api.addr_make("asset0000")),
                 &PairInfo {
                     contract_addr: deps.api.addr_make("pair0001").to_string(),
                     liquidity_token: deps.api.addr_make("liquidity0001").to_string(),
@@ -752,7 +752,7 @@ fn query_reverse_routes_with_to_native() {
     );
 
     let res: SimulateSwapOperationsResponse =
-        from_json(&query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
+        from_json(query(deps.as_ref(), mock_env(), msg).unwrap()).unwrap();
 
     assert_eq!(
         res,
