@@ -33,7 +33,7 @@ const COMMISSION_RATE: u64 = 3;
 
 const MINIMUM_LIQUIDITY_AMOUNT: u128 = 1_000;
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     env: Env,
@@ -101,7 +101,7 @@ pub fn instantiate(
         .add_attribute("liquidity_token_addr", liquidity_token_addr.to_string()))
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -547,7 +547,7 @@ pub fn swap(
     ]))
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::Pair {} => Ok(to_json_binary(&query_pair_info(deps)?)?),
@@ -864,7 +864,7 @@ pub fn assert_deadline(blocktime: u64, deadline: Option<u64>) -> Result<(), Cont
 }
 
 const TARGET_CONTRACT_VERSION: &str = "1.1.0";
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     migrate_version(
         deps,
