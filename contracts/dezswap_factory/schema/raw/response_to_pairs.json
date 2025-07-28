@@ -1,39 +1,19 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "PairInfo",
+  "title": "PairsResponse",
   "type": "object",
   "required": [
-    "asset_decimals",
-    "asset_infos",
-    "contract_addr",
-    "liquidity_token"
+    "pairs"
   ],
   "properties": {
-    "asset_decimals": {
+    "pairs": {
       "type": "array",
       "items": {
-        "type": "integer",
-        "format": "uint8",
-        "minimum": 0.0
-      },
-      "maxItems": 2,
-      "minItems": 2
-    },
-    "asset_infos": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/AssetInfo"
-      },
-      "maxItems": 2,
-      "minItems": 2
-    },
-    "contract_addr": {
-      "type": "string"
-    },
-    "liquidity_token": {
-      "type": "string"
+        "$ref": "#/definitions/PairInfo"
+      }
     }
   },
+  "additionalProperties": false,
   "definitions": {
     "AssetInfo": {
       "description": "AssetInfo contract_addr is usually passed from the cw20 hook so we can trust the contract_addr is properly validated.",
@@ -53,7 +33,8 @@
                 "contract_addr": {
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -73,12 +54,49 @@
                 "denom": {
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
         }
       ]
+    },
+    "PairInfo": {
+      "type": "object",
+      "required": [
+        "asset_decimals",
+        "asset_infos",
+        "contract_addr",
+        "liquidity_token"
+      ],
+      "properties": {
+        "asset_decimals": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          },
+          "maxItems": 2,
+          "minItems": 2
+        },
+        "asset_infos": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AssetInfo"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        },
+        "contract_addr": {
+          "type": "string"
+        },
+        "liquidity_token": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
     }
   }
 }
