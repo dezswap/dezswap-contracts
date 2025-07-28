@@ -20,9 +20,9 @@ pub struct TmpPairInfo {
     pub assets: [AssetRaw; 2],
     pub asset_decimals: [u8; 2],
     pub sender: Addr,
+    pub pair_contract_addr: Addr,
 }
 
-pub const TMP_PAIR_INFO: Item<TmpPairInfo> = Item::new("tmp_pair_info");
 pub const PAIRS: Map<&[u8], PairInfoRaw> = Map::new("pair_info");
 
 pub fn pair_key(asset_infos: &[AssetInfoRaw; 2]) -> Vec<u8> {
