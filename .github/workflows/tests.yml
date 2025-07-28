@@ -82,16 +82,16 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Install OpenSSL libraries
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libssl1.1
-
-      - name: Run cargo-tarpaulin
-        uses: actions-rs/tarpaulin@v0.1
+      - name: Install grcov
+        uses: actions-rs/install@v0.1
         with:
-          version: '0.18.0'
-          args: '-- --test-threads 1'
+          crate: grcov
+          version: latest
+
+      - name: Generate coverage report
+        run: |
+          CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' LLVM_PROFILE_FILE='cargo-test-%p-%m.profraw' cargo test
+          grcov . --binary-path ./target/debug/ -s . -t cobertura --branch --ignore-not-existing -o ./coverage.xml
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
