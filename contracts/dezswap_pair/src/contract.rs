@@ -866,6 +866,13 @@ pub fn assert_deadline(blocktime: u64, deadline: Option<u64>) -> Result<(), Cont
 const TARGET_CONTRACT_VERSION: &str = "1.1.0";
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    // Migrate PairInfoRaw: convert NativeToken (PascalCase) to native_token (snake_case)
+    // The alias in AssetInfoRaw allows us to read old format, and saving will write in new format
+    if let Some(pair_info) = PAIR_INFO.may_load(deps.storage)? {
+        // Re-save to convert to new format (native_token instead of NativeToken)
+        PAIR_INFO.save(deps.storage, &pair_info)?;
+    }
+
     migrate_version(
         deps,
         TARGET_CONTRACT_VERSION,

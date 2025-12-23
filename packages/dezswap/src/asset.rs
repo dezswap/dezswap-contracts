@@ -200,7 +200,9 @@ impl AssetRaw {
 #[cw_serde]
 #[derive(Eq)]
 pub enum AssetInfoRaw {
+    #[serde(alias = "Token")]
     Token { contract_addr: CanonicalAddr },
+    #[serde(alias = "NativeToken")]
     NativeToken { denom: String },
 }
 
