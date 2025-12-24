@@ -1,18 +1,16 @@
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, to_binary, Addr, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
-    ReplyOn, Response, StdError, StdResult, SubMsg, WasmMsg,
+    coin, entry_point, from_json, instantiate2_address, to_json_binary, Addr, Binary, Coin,
+    CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn, Response, StdError, StdResult,
+    SubMsg, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw20::Cw20ExecuteMsg;
 use dezswap::querier::{query_balance, query_pair_info_from_pair};
 use dezswap::util::migrate_version;
 
-use crate::response::MsgInstantiateContractResponse;
 use crate::state::{
     add_allow_native_token, pair_key, read_pairs, Config, TmpPairInfo, ALLOW_NATIVE_TOKENS, CONFIG,
-    PAIRS, TMP_PAIR_INFO,
+    PAIRS,
 };
 
 use dezswap::asset::{Asset, AssetInfo, AssetInfoRaw, PairInfo, PairInfoRaw};
@@ -24,7 +22,7 @@ use dezswap::pair::{
     ExecuteMsg as PairExecuteMsg, InstantiateMsg as PairInstantiateMsg,
     MigrateMsg as PairMigrateMsg,
 };
-use protobuf::Message;
+use sha2::{Digest, Sha256};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:dezswap-factory";
@@ -119,7 +117,7 @@ pub fn execute_create_pair(
         return Err(StdError::generic_err("same asset"));
     }
 
-    let asset_1_decimal = match assets[0]
+    let asset_1_decimal: u8 = match assets[0]
         .info
         .query_decimals(env.contract.address.clone(), &deps.querier)
     {
@@ -150,15 +148,30 @@ pub fn execute_create_pair(
         return Err(StdError::generic_err("Pair already exists"));
     }
 
-    TMP_PAIR_INFO.save(
-        deps.storage,
-        &TmpPairInfo {
-            pair_key,
-            assets: raw_assets,
-            asset_decimals,
-            sender: info.sender,
-        },
-    )?;
+    let pair_code_info = deps.querier.query_wasm_code_info(config.pair_code_id)?;
+    let mut hasher = Sha256::new();
+    hasher.update(pair_key.clone());
+    let salt = hasher.finalize();
+
+    let canonicalize_creator = deps
+        .api
+        .addr_canonicalize(env.contract.address.as_str())
+        .unwrap();
+
+    let predict_pair_contract_addr = instantiate2_address(
+        pair_code_info.checksum.as_slice(),
+        &canonicalize_creator,
+        salt.as_slice(),
+    )
+    .unwrap();
+
+    let pair_info = TmpPairInfo {
+        pair_key,
+        assets: raw_assets,
+        asset_decimals,
+        sender: info.sender,
+        pair_contract_addr: deps.api.addr_humanize(&predict_pair_contract_addr)?,
+    };
 
     Ok(Response::new()
         .add_attributes(vec![
@@ -168,18 +181,20 @@ pub fn execute_create_pair(
         .add_submessage(SubMsg {
             id: CREATE_PAIR_REPLY_ID,
             gas_limit: None,
-            msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
+            msg: CosmosMsg::Wasm(WasmMsg::Instantiate2 {
                 code_id: config.pair_code_id,
                 funds: vec![],
                 admin: Some(env.contract.address.to_string()),
                 label: "pair".to_string(),
-                msg: to_binary(&PairInstantiateMsg {
+                msg: to_json_binary(&PairInstantiateMsg {
                     asset_infos,
                     token_code_id: config.token_code_id,
                     asset_decimals,
                 })?,
+                salt: Binary::from(salt.as_slice()),
             }),
             reply_on: ReplyOn::Success,
+            payload: to_json_binary(&pair_info)?,
         }))
 }
 
@@ -233,7 +248,7 @@ pub fn execute_migrate_pair(
         Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Migrate {
             contract_addr: contract,
             new_code_id: code_id,
-            msg: to_binary(&PairMigrateMsg {})?,
+            msg: to_json_binary(&PairMigrateMsg {})?,
         })),
     )
 }
@@ -245,15 +260,11 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> StdResult<Response> {
         return Err(StdError::generic_err("invalid reply msg"));
     }
 
-    let tmp_pair_info = TMP_PAIR_INFO.load(deps.storage)?;
+    let tmp_pair_info: TmpPairInfo = from_json(msg.payload)?;
 
-    let res: MsgInstantiateContractResponse =
-        Message::parse_from_bytes(msg.result.unwrap().data.unwrap().as_slice()).map_err(|_| {
-            StdError::parse_err("MsgInstantiateContractResponse", "failed to parse data")
-        })?;
-
-    let pair_contract = res.get_address();
-    let pair_info = query_pair_info_from_pair(&deps.querier, Addr::unchecked(pair_contract))?;
+    let pair_contract = tmp_pair_info.pair_contract_addr.to_string();
+    let pair_info =
+        query_pair_info_from_pair(&deps.querier, Addr::unchecked(pair_contract.to_string()))?;
 
     let raw_infos = [
         tmp_pair_info.assets[0].info.clone(),
@@ -265,7 +276,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> StdResult<Response> {
         &tmp_pair_info.pair_key,
         &PairInfoRaw {
             liquidity_token: deps.api.addr_canonicalize(&pair_info.liquidity_token)?,
-            contract_addr: deps.api.addr_canonicalize(pair_contract)?,
+            contract_addr: deps.api.addr_canonicalize(pair_contract.as_str())?,
             asset_infos: raw_infos,
             asset_decimals: tmp_pair_info.asset_decimals,
         },
@@ -285,7 +296,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> StdResult<Response> {
                 let contract_addr = deps.api.addr_humanize(contract_addr)?.to_string();
                 messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: contract_addr.to_string(),
-                    msg: to_binary(&Cw20ExecuteMsg::IncreaseAllowance {
+                    msg: to_json_binary(&Cw20ExecuteMsg::IncreaseAllowance {
                         spender: pair_contract.to_string(),
                         amount: asset.amount,
                         expires: None,
@@ -294,7 +305,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> StdResult<Response> {
                 }));
                 messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr,
-                    msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
+                    msg: to_json_binary(&Cw20ExecuteMsg::TransferFrom {
                         owner: tmp_pair_info.sender.to_string(),
                         recipient: env.contract.address.to_string(),
                         amount: asset.amount,
@@ -307,7 +318,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> StdResult<Response> {
         funds.sort_by(|a, b| a.denom.cmp(&b.denom));
         messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: pair_contract.to_string(),
-            msg: to_binary(&PairExecuteMsg::ProvideLiquidity {
+            msg: to_json_binary(&PairExecuteMsg::ProvideLiquidity {
                 assets,
                 receiver: Some(tmp_pair_info.sender.to_string()),
                 deadline: None,
@@ -320,7 +331,10 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> StdResult<Response> {
     Ok(Response::new()
         .add_attributes(vec![
             ("pair_contract_addr", pair_contract),
-            ("liquidity_token_addr", pair_info.liquidity_token.as_str()),
+            (
+                "liquidity_token_addr",
+                pair_info.liquidity_token.to_string(),
+            ),
         ])
         .add_messages(messages))
 }
@@ -328,13 +342,13 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> StdResult<Response> {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Config {} => to_binary(&query_config(deps)?),
-        QueryMsg::Pair { asset_infos } => to_binary(&query_pair(deps, asset_infos)?),
+        QueryMsg::Config {} => to_json_binary(&query_config(deps)?),
+        QueryMsg::Pair { asset_infos } => to_json_binary(&query_pair(deps, asset_infos)?),
         QueryMsg::Pairs { start_after, limit } => {
-            to_binary(&query_pairs(deps, start_after, limit)?)
+            to_json_binary(&query_pairs(deps, start_after, limit)?)
         }
         QueryMsg::NativeTokenDecimals { denom } => {
-            to_binary(&query_native_token_decimal(deps, denom)?)
+            to_json_binary(&query_native_token_decimal(deps, denom)?)
         }
     }
 }
@@ -388,14 +402,27 @@ pub fn query_native_token_decimal(
     Ok(NativeTokenDecimalsResponse { decimals })
 }
 
-const TARGET_CONTRACT_VERSION: &str = "1.1.0";
+use cosmwasm_std::Order;
+const TARGET_CONTRACT_VERSION: &str = "1.1.1";
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Response> {
+    // Migrate all PairInfoRaw in PAIRS Map: convert NativeToken (PascalCase) to native_token (snake_case)
+    // The alias in AssetInfoRaw allows us to read old format, and saving will write in new format
+    let pairs: Vec<(Vec<u8>, PairInfoRaw)> = PAIRS
+        .range(deps.storage, None, None, Order::Ascending)
+        .collect::<StdResult<Vec<_>>>()?;
+
+    for (key, pair_info) in pairs {
+        // Re-save to convert to new format (native_token instead of NativeToken)
+        PAIRS.save(deps.storage, &key, &pair_info)?;
+    }
+
     migrate_version(
         deps,
         TARGET_CONTRACT_VERSION,
         CONTRACT_NAME,
         CONTRACT_VERSION,
     )?;
+
     Ok(Response::default())
 }
