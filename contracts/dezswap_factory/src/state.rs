@@ -122,4 +122,20 @@ mod allow_native_token {
             7u8
         );
     }
+
+    #[test]
+    fn denom_low_case() {
+        let denom: String = "xerc20:B99a63f7e1BD195f65e2EBFcFC393897D73F24c9"
+            .to_ascii_lowercase()
+            .replace(":0x", ":");
+        assert_eq!(denom, "xerc20:b99a63f7e1bd195f65e2ebfcfc393897d73f24c9");
+
+        let denom: String = "xerc20:0xB99a63f7e1BD195f65e2EBFcFC393897D73F24c9"
+            .to_ascii_lowercase()
+            .replace(":0x", ":");
+        assert_eq!(denom, "xerc20:b99a63f7e1bd195f65e2ebfcfc393897d73f24c9");
+
+        let denom: String = "axpla".to_ascii_lowercase().replace(":0x", ":");
+        assert_eq!(denom, "axpla");
+    }
 }
