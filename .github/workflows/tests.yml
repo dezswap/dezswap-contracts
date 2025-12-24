@@ -63,12 +63,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
       - uses: actions/cache@v4
         with:
           path: |
-            ~/.cargo/bin
             ~/.cargo/git/checkouts
             ~/.cargo/git/db
             ~/.cargo/registry/cache
@@ -76,17 +76,15 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
+      - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
 
       - name: Install grcov
-        uses: actions-rs/install@v0.1
+        uses: taiki-e/install-action@v2
         with:
-          crate: grcov
-          version: latest
+          tool: grcov
 
       - name: Generate coverage report
         run: |
