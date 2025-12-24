@@ -402,14 +402,27 @@ pub fn query_native_token_decimal(
     Ok(NativeTokenDecimalsResponse { decimals })
 }
 
+use cosmwasm_std::Order;
 const TARGET_CONTRACT_VERSION: &str = "1.1.1";
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Response> {
+    // Migrate all PairInfoRaw in PAIRS Map: convert NativeToken (PascalCase) to native_token (snake_case)
+    // The alias in AssetInfoRaw allows us to read old format, and saving will write in new format
+    let pairs: Vec<(Vec<u8>, PairInfoRaw)> = PAIRS
+        .range(deps.storage, None, None, Order::Ascending)
+        .collect::<StdResult<Vec<_>>>()?;
+
+    for (key, pair_info) in pairs {
+        // Re-save to convert to new format (native_token instead of NativeToken)
+        PAIRS.save(deps.storage, &key, &pair_info)?;
+    }
+
     migrate_version(
         deps,
         TARGET_CONTRACT_VERSION,
         CONTRACT_NAME,
         CONTRACT_VERSION,
     )?;
+
     Ok(Response::default())
 }
