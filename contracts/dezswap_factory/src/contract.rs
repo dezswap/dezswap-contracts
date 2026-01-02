@@ -5,7 +5,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw20::Cw20ExecuteMsg;
-use dezswap::querier::{query_balance, query_pair_info_from_pair};
+use dezswap::querier::query_pair_info_from_pair;
 use dezswap::util::migrate_version;
 
 use crate::state::{
@@ -200,7 +200,7 @@ pub fn execute_create_pair(
 
 pub fn execute_add_native_token_decimals(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     denom: String,
     decimals: u8,
@@ -212,12 +212,14 @@ pub fn execute_add_native_token_decimals(
         return Err(StdError::generic_err("unauthorized"));
     }
 
-    let balance = query_balance(&deps.querier, env.contract.address, denom.to_string())?;
-    if balance.is_zero() {
+    let supply = deps.querier.query_supply(denom.to_string())?;
+    if supply.amount.is_zero() {
         return Err(StdError::generic_err(
-            "a balance greater than zero is required by the factory for verification",
+            "supply greater than zero is required by the factory for verification",
         ));
     }
+
+    let denom: String = denom.to_ascii_lowercase().replace(":0x", ":");
 
     add_allow_native_token(deps.storage, denom.to_string(), decimals)?;
 
@@ -397,6 +399,7 @@ pub fn query_native_token_decimal(
     deps: Deps,
     denom: String,
 ) -> StdResult<NativeTokenDecimalsResponse> {
+    let denom: String = denom.to_ascii_lowercase().replace(":0x", ":");
     let decimals = ALLOW_NATIVE_TOKENS.load(deps.storage, denom.as_bytes())?;
 
     Ok(NativeTokenDecimalsResponse { decimals })
@@ -415,6 +418,18 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Response
     for (key, pair_info) in pairs {
         // Re-save to convert to new format (native_token instead of NativeToken)
         PAIRS.save(deps.storage, &key, &pair_info)?;
+    }
+
+    // Migrate all AllowNativeToken in ALLOW_NATIVE_TOKENS Map: convert NativeToken to low case
+    let allow_native_tokens: Vec<(Vec<u8>, u8)> = ALLOW_NATIVE_TOKENS
+        .range(deps.storage, None, None, Order::Ascending)
+        .collect::<StdResult<Vec<_>>>()?;
+
+    for (key, decimals) in allow_native_tokens {
+        let key: String = String::from_utf8(key)?
+            .to_ascii_lowercase()
+            .replace(":0x", ":");
+        ALLOW_NATIVE_TOKENS.save(deps.storage, key.as_bytes(), &decimals)?;
     }
 
     migrate_version(

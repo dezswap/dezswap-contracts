@@ -718,7 +718,7 @@ fn failed_add_allow_native_token_with_zero_factory_balance() {
     assert_eq!(
         execute(deps.as_mut(), mock_env(), info, msg),
         Err(StdError::generic_err(
-            "a balance greater than zero is required by the factory for verification",
+            "supply greater than zero is required by the factory for verification",
         ))
     );
 }
