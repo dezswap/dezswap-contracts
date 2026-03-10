@@ -1,7 +1,16 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MigrateMsg",
-  "description": "We currently take no arguments for migrations",
+  "description": "Migration message; optional factory_addr allows existing deployed pairs to set FACTORY_ADDR on migrate.",
   "type": "object",
+  "properties": {
+    "factory_addr": {
+      "description": "If set, stored as the contract's factory address (protocol fee collector). Used when factory migrates existing pairs.",
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
   "additionalProperties": false
 }
