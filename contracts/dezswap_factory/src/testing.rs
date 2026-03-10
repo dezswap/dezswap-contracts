@@ -183,6 +183,7 @@ fn create_pair() {
                             contract_addr: deps.api.addr_make("asset0001").to_string(),
                         }
                     ],
+                    factory_addr: MOCK_CONTRACT_ADDR.to_string(),
                     token_code_id: 123u64,
                     asset_decimals: [6u8, 8u8]
                 })
@@ -253,6 +254,7 @@ fn create_pair_native_token_and_ibc_token() {
                             denom: "ibc/HASH".to_string(),
                         }
                     ],
+                    factory_addr: MOCK_CONTRACT_ADDR.to_string(),
                     token_code_id: 123u64,
                     asset_decimals: [6u8, 6u8]
                 })
@@ -785,7 +787,10 @@ fn normal_migrate_pair() {
         Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Migrate {
             contract_addr: deps.api.addr_make("contract0000").to_string(),
             new_code_id: 123u64,
-            msg: to_json_binary(&PairMigrateMsg {}).unwrap(),
+            msg: to_json_binary(&PairMigrateMsg {
+                factory_addr: Some(MOCK_CONTRACT_ADDR.to_string()),
+            })
+            .unwrap(),
         })),
     );
 }
@@ -807,7 +812,10 @@ fn normal_migrate_pair_with_none_code_id_will_config_code_id() {
         Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Migrate {
             contract_addr: deps.api.addr_make("contract0000").to_string(),
             new_code_id: 321u64,
-            msg: to_json_binary(&PairMigrateMsg {}).unwrap(),
+            msg: to_json_binary(&PairMigrateMsg {
+                factory_addr: Some(MOCK_CONTRACT_ADDR.to_string()),
+            })
+            .unwrap(),
         })),
     );
 }
@@ -828,4 +836,116 @@ fn failed_migrate_pair_with_no_admin() {
         execute(deps.as_mut(), mock_env(), info, msg),
         Err(StdError::generic_err("unauthorized")),
     );
+}
+
+#[test]
+fn claim_unauthorized() {
+    let mut deps = mock_dependencies(&[]);
+    deps = init(deps);
+
+    let info = message_info(&deps.api.addr_make("addr0001"), &[]);
+    let msg = ExecuteMsg::Claim {
+        asset: Asset {
+            info: AssetInfo::NativeToken {
+                denom: "uusd".to_string(),
+            },
+            amount: Uint128::from(1u128),
+        },
+    };
+
+    assert_eq!(
+        execute(deps.as_mut(), mock_env(), info, msg),
+        Err(StdError::generic_err("unauthorized"))
+    );
+}
+
+#[test]
+fn claim_native_success_and_insufficient() {
+    let mut deps = mock_dependencies(&[]);
+    deps = init(deps);
+
+    deps.querier
+        .with_balance(&[(&MOCK_CONTRACT_ADDR.to_string(), coins(10u128, "uusd"))]);
+
+    // success (recipient is always Config owner = addr0000)
+    let info = message_info(&deps.api.addr_make("addr0000"), &[]);
+    let msg = ExecuteMsg::Claim {
+        asset: Asset {
+            info: AssetInfo::NativeToken {
+                denom: "uusd".to_string(),
+            },
+            amount: Uint128::from(7u128),
+        },
+    };
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    assert_eq!(
+        res.messages,
+        vec![SubMsg::new(CosmosMsg::Bank(cosmwasm_std::BankMsg::Send {
+            to_address: deps.api.addr_make("addr0000").to_string(),
+            amount: coins(7u128, "uusd"),
+        }))]
+    );
+
+    // insufficient balance: contract still returns Ok; the BankMsg would fail when executed on chain
+    let info = message_info(&deps.api.addr_make("addr0000"), &[]);
+    let msg = ExecuteMsg::Claim {
+        asset: Asset {
+            info: AssetInfo::NativeToken {
+                denom: "uusd".to_string(),
+            },
+            amount: Uint128::from(11u128),
+        },
+    };
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    assert_eq!(res.messages.len(), 1);
+}
+
+#[test]
+fn claim_cw20_success_and_insufficient() {
+    let mut deps = mock_dependencies(&[]);
+    deps = init(deps);
+
+    let token = deps.api.addr_make("asset0001").to_string();
+
+    deps.querier.with_token_balances(&[(
+        &token,
+        &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::from(10u128))],
+    )]);
+
+    // success
+    let info = message_info(&deps.api.addr_make("addr0000"), &[]);
+    let msg = ExecuteMsg::Claim {
+        asset: Asset {
+            info: AssetInfo::Token {
+                contract_addr: token.clone(),
+            },
+            amount: Uint128::from(4u128),
+        },
+    };
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    assert_eq!(
+        res.messages,
+        vec![SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: token.clone(),
+            msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: deps.api.addr_make("addr0000").to_string(),
+                amount: Uint128::from(4u128),
+            })
+            .unwrap(),
+            funds: vec![],
+        }))]
+    );
+
+    // insufficient balance: contract still returns Ok; the Transfer would fail when executed on chain
+    let info = message_info(&deps.api.addr_make("addr0000"), &[]);
+    let msg = ExecuteMsg::Claim {
+        asset: Asset {
+            info: AssetInfo::Token {
+                contract_addr: token,
+            },
+            amount: Uint128::from(11u128),
+        },
+    };
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    assert_eq!(res.messages.len(), 1);
 }

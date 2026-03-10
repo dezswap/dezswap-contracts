@@ -38,4 +38,7 @@ pub enum ContractError {
 
     #[error("Max slippage assertion")]
     MaxSlippageAssertion {},
+
+    #[error("Commission underflow")]
+    CommissionUnderflow {},
 }

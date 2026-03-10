@@ -29,6 +29,10 @@ pub enum ExecuteMsg {
         contract: String,
         code_id: Option<u64>,
     },
+    /// Claim protocol fees accumulated in the factory balance (owner-only; sent to Config owner)
+    Claim {
+        asset: Asset,
+    },
 }
 
 #[cw_serde]
