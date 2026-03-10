@@ -788,7 +788,7 @@ fn normal_migrate_pair() {
             contract_addr: deps.api.addr_make("contract0000").to_string(),
             new_code_id: 123u64,
             msg: to_json_binary(&PairMigrateMsg {
-                factory_addr: Some(MOCK_CONTRACT_ADDR.to_string()),
+                factory_addr: MOCK_CONTRACT_ADDR.to_string(),
             })
             .unwrap(),
         })),
@@ -813,7 +813,7 @@ fn normal_migrate_pair_with_none_code_id_will_config_code_id() {
             contract_addr: deps.api.addr_make("contract0000").to_string(),
             new_code_id: 321u64,
             msg: to_json_binary(&PairMigrateMsg {
-                factory_addr: Some(MOCK_CONTRACT_ADDR.to_string()),
+                factory_addr: MOCK_CONTRACT_ADDR.to_string(),
             })
             .unwrap(),
         })),

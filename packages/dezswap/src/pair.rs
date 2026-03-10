@@ -87,9 +87,9 @@ pub struct ReverseSimulationResponse {
     pub commission_amount: Uint128,
 }
 
-/// Migration message; optional factory_addr allows existing deployed pairs to set FACTORY_ADDR on migrate.
+/// Migration message; only the admin (e.g. factory) can call migrate, and must pass its address so the pair can set FACTORY_ADDR.
 #[cw_serde]
 pub struct MigrateMsg {
-    /// If set, stored as the contract's factory address (protocol fee collector). Used when factory migrates existing pairs.
-    pub factory_addr: Option<String>,
+    /// Factory contract address (protocol fee collector). Stored as FACTORY_ADDR; required when admin migrates the pair.
+    pub factory_addr: String,
 }

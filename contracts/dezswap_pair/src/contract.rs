@@ -888,11 +888,9 @@ pub fn assert_deadline(blocktime: u64, deadline: Option<u64>) -> Result<(), Cont
 const TARGET_CONTRACT_VERSION: &str = "1.2.0";
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
-    // Allow existing deployed pairs to set FACTORY_ADDR on migrate (e.g. when factory runs MigratePair with factory_addr)
-    if let Some(factory_addr) = msg.factory_addr {
-        let addr = deps.api.addr_validate(&factory_addr)?;
-        FACTORY_ADDR.save(deps.storage, &addr)?;
-    }
+    // Admin (e.g. factory) must pass its address so the pair can set FACTORY_ADDR for protocol fee
+    let addr = deps.api.addr_validate(&msg.factory_addr)?;
+    FACTORY_ADDR.save(deps.storage, &addr)?;
 
     migrate_version(
         deps,

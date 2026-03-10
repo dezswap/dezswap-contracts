@@ -279,7 +279,7 @@ pub fn execute_migrate_pair(
             contract_addr: contract,
             new_code_id: code_id,
             msg: to_json_binary(&PairMigrateMsg {
-                factory_addr: Some(env.contract.address.to_string()),
+                factory_addr: env.contract.address.to_string(),
             })?,
         })),
     )
