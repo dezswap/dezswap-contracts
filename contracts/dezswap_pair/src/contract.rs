@@ -527,9 +527,7 @@ pub fn swap(
         amount: protocol_fee_amount,
     };
     // Remainder of commission stays in pool as LP fee
-    let commission_amount = commission_amount
-        .checked_sub(protocol_fee_amount)
-        .map_err(|_| ContractError::CommissionUnderflow {})?;
+    let commission_amount = commission_amount.checked_sub(protocol_fee_amount)?;
 
     // check max spread limit if exist
     assert_max_spread(
