@@ -144,6 +144,18 @@ pub fn execute_create_pair(
         return Err(StdError::generic_err("same asset"));
     }
 
+    let mut expected: Vec<Coin> = assets
+        .iter()
+        .filter(|a| !a.amount.is_zero() && a.info.is_native_token())
+        .map(|a| coin(a.amount.u128(), a.info.to_string()))
+        .collect();
+    expected.sort_by(|a, b| a.denom.cmp(&b.denom));
+    let mut provided = info.funds.clone();
+    provided.sort_by(|a, b| a.denom.cmp(&b.denom));
+    if expected != provided {
+        return Err(StdError::generic_err("liquidity funds mismatch"));
+    }
+
     let asset_1_decimal: u8 = match assets[0]
         .info
         .query_decimals(env.contract.address.clone(), &deps.querier)

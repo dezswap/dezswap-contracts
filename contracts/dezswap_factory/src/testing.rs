@@ -201,6 +201,62 @@ fn create_pair() {
 }
 
 #[test]
+fn create_pair_with_native_init_provide_requires_matching_funds() {
+    let mut deps = mock_dependencies(&[coin(10u128, "uusd".to_string())]);
+    deps = init(deps);
+    deps.querier
+        .with_dezswap_factory(&[], &[("uusd".to_string(), 6u8)]);
+
+    let assets = [
+        Asset {
+            info: AssetInfo::NativeToken {
+                denom: "uusd".to_string(),
+            },
+            amount: Uint128::from(100u128),
+        },
+        Asset {
+            info: AssetInfo::Token {
+                contract_addr: deps.api.addr_make("asset0001").to_string(),
+            },
+            amount: Uint128::zero(),
+        },
+    ];
+
+    // missing funds should fail
+    let msg = ExecuteMsg::CreatePair {
+        assets: assets.clone(),
+    };
+    let env = mock_env();
+    let info = message_info(&deps.api.addr_make("addr0000"), &[]);
+    assert_eq!(
+        execute(deps.as_mut(), env.clone(), info, msg),
+        Err(StdError::generic_err("liquidity funds mismatch"))
+    );
+
+    // wrong amount should fail
+    let msg = ExecuteMsg::CreatePair {
+        assets: assets.clone(),
+    };
+    let info = message_info(&deps.api.addr_make("addr0000"), &coins(99u128, "uusd"));
+    assert_eq!(
+        execute(deps.as_mut(), env.clone(), info, msg),
+        Err(StdError::generic_err("liquidity funds mismatch"))
+    );
+
+    // exact amount should pass
+    let msg = ExecuteMsg::CreatePair { assets };
+    let info = message_info(&deps.api.addr_make("addr0000"), &coins(100u128, "uusd"));
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+    assert_eq!(
+        res.attributes,
+        vec![
+            attr("action", "create_pair"),
+            attr("pair", format!("uusd-{}", deps.api.addr_make("asset0001")))
+        ]
+    );
+}
+
+#[test]
 fn create_pair_native_token_and_ibc_token() {
     let mut deps = mock_dependencies(&[
         coin(10u128, "uusd".to_string()),
