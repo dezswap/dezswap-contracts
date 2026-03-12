@@ -527,7 +527,7 @@ pub fn swap(
         amount: protocol_fee_amount,
     };
     // Remainder of commission stays in pool as LP fee
-    let commission_amount = commission_amount.checked_sub(protocol_fee_amount)?;
+    let lp_commission_amount = commission_amount.checked_sub(protocol_fee_amount)?;
 
     // check max spread limit if exist
     assert_max_spread(
@@ -562,8 +562,9 @@ pub fn swap(
         ("return_amount", &return_amount.to_string()),
         ("spread_amount", &spread_amount.to_string()),
         ("commission_amount", &commission_amount.to_string()),
-        ("protocol_fee_amount", &protocol_fee_amount.to_string()),
+        ("lp_commission_amount", &lp_commission_amount.to_string()),
         ("protocol_fee_collector", factory_addr.as_str()),
+        ("protocol_fee_amount", &protocol_fee_amount.to_string()),
     ]))
 }
 

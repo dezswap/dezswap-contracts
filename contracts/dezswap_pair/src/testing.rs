@@ -808,18 +808,19 @@ fn try_native_to_token() {
             attr("offer_amount", offer_amount.to_string()),
             attr("return_amount", expected_return_amount.to_string()),
             attr("spread_amount", expected_spread_amount.to_string()),
+            attr("commission_amount", expected_commission_amount.to_string()),
             attr(
-                "commission_amount",
+                "lp_commission_amount",
                 expected_lp_commission_amount.to_string()
-            ),
-            attr(
-                "protocol_fee_amount",
-                expected_protocol_fee_amount.to_string()
             ),
             attr(
                 "protocol_fee_collector",
                 deps.api.addr_make("factory").to_string()
             ),
+            attr(
+                "protocol_fee_amount",
+                expected_protocol_fee_amount.to_string()
+            )
         ]
     );
 
@@ -1018,18 +1019,19 @@ fn try_token_to_native() {
             attr("offer_amount", offer_amount.to_string()),
             attr("return_amount", expected_return_amount.to_string()),
             attr("spread_amount", expected_spread_amount.to_string()),
+            attr("commission_amount", expected_commission_amount.to_string()),
             attr(
-                "commission_amount",
+                "lp_commission_amount",
                 expected_lp_commission_amount.to_string()
-            ),
-            attr(
-                "protocol_fee_amount",
-                expected_protocol_fee_amount.to_string()
             ),
             attr(
                 "protocol_fee_collector",
                 deps.api.addr_make("factory").to_string()
             ),
+            attr(
+                "protocol_fee_amount",
+                expected_protocol_fee_amount.to_string()
+            )
         ]
     );
 
