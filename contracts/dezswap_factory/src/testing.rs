@@ -183,6 +183,7 @@ fn create_pair() {
                             contract_addr: deps.api.addr_make("asset0001").to_string(),
                         }
                     ],
+                    factory_addr: MOCK_CONTRACT_ADDR.to_string(),
                     token_code_id: 123u64,
                     asset_decimals: [6u8, 8u8]
                 })
@@ -196,6 +197,62 @@ fn create_pair() {
             .into(),
             payload: Binary::from(HexBinary::from_hex("7b22706169725f6b6579223a5b36342c3136312c36372c35382c3234362c39302c37372c3130362c36342c33382c3233362c33352c3138392c32322c3230332c33372c39372c3133382c3135362c3131352c3232362c3134312c3134302c3133352c37392c3133322c31332c3131372c3138322c38302c3230382c3232362c3131372c3131372c3131352c3130305d2c22617373657473223a5b7b22696e666f223a7b226e61746976655f746f6b656e223a7b2264656e6f6d223a2275757364227d7d2c22616d6f756e74223a2230227d2c7b22696e666f223a7b22746f6b656e223a7b22636f6e74726163745f61646472223a22514b46444f765a61545770414a75776a7652624c4a57474b6e4850696a5979485434514e64625a51304f493d227d7d2c22616d6f756e74223a2230227d5d2c2261737365745f646563696d616c73223a5b362c385d2c2273656e646572223a22636f736d7761736d3178756b756b6b3638746361793632396e6c686e687a6e64393039356573716c6e397976633070756e6c363435703736337a643573753777663836222c22706169725f636f6e74726163745f61646472223a22636f736d7761736d313963356c6a76347867677a3868726777326d6a6d7377727434686a6368747a7873327777726a7a6a61713033753779646e7071736e3530343878227d").unwrap())
         },]
+    );
+}
+
+#[test]
+fn create_pair_with_native_init_provide_requires_matching_funds() {
+    let mut deps = mock_dependencies(&[coin(10u128, "uusd".to_string())]);
+    deps = init(deps);
+    deps.querier
+        .with_dezswap_factory(&[], &[("uusd".to_string(), 6u8)]);
+
+    let assets = [
+        Asset {
+            info: AssetInfo::NativeToken {
+                denom: "uusd".to_string(),
+            },
+            amount: Uint128::from(100u128),
+        },
+        Asset {
+            info: AssetInfo::Token {
+                contract_addr: deps.api.addr_make("asset0001").to_string(),
+            },
+            amount: Uint128::zero(),
+        },
+    ];
+
+    // missing funds should fail
+    let msg = ExecuteMsg::CreatePair {
+        assets: assets.clone(),
+    };
+    let env = mock_env();
+    let info = message_info(&deps.api.addr_make("addr0000"), &[]);
+    assert_eq!(
+        execute(deps.as_mut(), env.clone(), info, msg),
+        Err(StdError::generic_err("liquidity funds mismatch"))
+    );
+
+    // wrong amount should fail
+    let msg = ExecuteMsg::CreatePair {
+        assets: assets.clone(),
+    };
+    let info = message_info(&deps.api.addr_make("addr0000"), &coins(99u128, "uusd"));
+    assert_eq!(
+        execute(deps.as_mut(), env.clone(), info, msg),
+        Err(StdError::generic_err("liquidity funds mismatch"))
+    );
+
+    // exact amount should pass
+    let msg = ExecuteMsg::CreatePair { assets };
+    let info = message_info(&deps.api.addr_make("addr0000"), &coins(100u128, "uusd"));
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+    assert_eq!(
+        res.attributes,
+        vec![
+            attr("action", "create_pair"),
+            attr("pair", format!("uusd-{}", deps.api.addr_make("asset0001")))
+        ]
     );
 }
 
@@ -253,6 +310,7 @@ fn create_pair_native_token_and_ibc_token() {
                             denom: "ibc/HASH".to_string(),
                         }
                     ],
+                    factory_addr: MOCK_CONTRACT_ADDR.to_string(),
                     token_code_id: 123u64,
                     asset_decimals: [6u8, 6u8]
                 })
@@ -785,7 +843,10 @@ fn normal_migrate_pair() {
         Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Migrate {
             contract_addr: deps.api.addr_make("contract0000").to_string(),
             new_code_id: 123u64,
-            msg: to_json_binary(&PairMigrateMsg {}).unwrap(),
+            msg: to_json_binary(&PairMigrateMsg {
+                factory_addr: MOCK_CONTRACT_ADDR.to_string(),
+            })
+            .unwrap(),
         })),
     );
 }
@@ -807,7 +868,10 @@ fn normal_migrate_pair_with_none_code_id_will_config_code_id() {
         Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Migrate {
             contract_addr: deps.api.addr_make("contract0000").to_string(),
             new_code_id: 321u64,
-            msg: to_json_binary(&PairMigrateMsg {}).unwrap(),
+            msg: to_json_binary(&PairMigrateMsg {
+                factory_addr: MOCK_CONTRACT_ADDR.to_string(),
+            })
+            .unwrap(),
         })),
     );
 }
@@ -828,4 +892,116 @@ fn failed_migrate_pair_with_no_admin() {
         execute(deps.as_mut(), mock_env(), info, msg),
         Err(StdError::generic_err("unauthorized")),
     );
+}
+
+#[test]
+fn claim_unauthorized() {
+    let mut deps = mock_dependencies(&[]);
+    deps = init(deps);
+
+    let info = message_info(&deps.api.addr_make("addr0001"), &[]);
+    let msg = ExecuteMsg::Claim {
+        asset: Asset {
+            info: AssetInfo::NativeToken {
+                denom: "uusd".to_string(),
+            },
+            amount: Uint128::from(1u128),
+        },
+    };
+
+    assert_eq!(
+        execute(deps.as_mut(), mock_env(), info, msg),
+        Err(StdError::generic_err("unauthorized"))
+    );
+}
+
+#[test]
+fn claim_native_success_and_insufficient() {
+    let mut deps = mock_dependencies(&[]);
+    deps = init(deps);
+
+    deps.querier
+        .with_balance(&[(&MOCK_CONTRACT_ADDR.to_string(), coins(10u128, "uusd"))]);
+
+    // success (recipient is always Config owner = addr0000)
+    let info = message_info(&deps.api.addr_make("addr0000"), &[]);
+    let msg = ExecuteMsg::Claim {
+        asset: Asset {
+            info: AssetInfo::NativeToken {
+                denom: "uusd".to_string(),
+            },
+            amount: Uint128::from(7u128),
+        },
+    };
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    assert_eq!(
+        res.messages,
+        vec![SubMsg::new(CosmosMsg::Bank(cosmwasm_std::BankMsg::Send {
+            to_address: deps.api.addr_make("addr0000").to_string(),
+            amount: coins(7u128, "uusd"),
+        }))]
+    );
+
+    // insufficient balance: contract still returns Ok; the BankMsg would fail when executed on chain
+    let info = message_info(&deps.api.addr_make("addr0000"), &[]);
+    let msg = ExecuteMsg::Claim {
+        asset: Asset {
+            info: AssetInfo::NativeToken {
+                denom: "uusd".to_string(),
+            },
+            amount: Uint128::from(11u128),
+        },
+    };
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    assert_eq!(res.messages.len(), 1);
+}
+
+#[test]
+fn claim_cw20_success_and_insufficient() {
+    let mut deps = mock_dependencies(&[]);
+    deps = init(deps);
+
+    let token = deps.api.addr_make("asset0001").to_string();
+
+    deps.querier.with_token_balances(&[(
+        &token,
+        &[(&MOCK_CONTRACT_ADDR.to_string(), &Uint128::from(10u128))],
+    )]);
+
+    // success
+    let info = message_info(&deps.api.addr_make("addr0000"), &[]);
+    let msg = ExecuteMsg::Claim {
+        asset: Asset {
+            info: AssetInfo::Token {
+                contract_addr: token.clone(),
+            },
+            amount: Uint128::from(4u128),
+        },
+    };
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    assert_eq!(
+        res.messages,
+        vec![SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: token.clone(),
+            msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: deps.api.addr_make("addr0000").to_string(),
+                amount: Uint128::from(4u128),
+            })
+            .unwrap(),
+            funds: vec![],
+        }))]
+    );
+
+    // insufficient balance: contract still returns Ok; the Transfer would fail when executed on chain
+    let info = message_info(&deps.api.addr_make("addr0000"), &[]);
+    let msg = ExecuteMsg::Claim {
+        asset: Asset {
+            info: AssetInfo::Token {
+                contract_addr: token,
+            },
+            amount: Uint128::from(11u128),
+        },
+    };
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    assert_eq!(res.messages.len(), 1);
 }

@@ -1,7 +1,16 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MigrateMsg",
-  "description": "We currently take no arguments for migrations",
+  "description": "Migration message; only the admin (e.g. factory) can call migrate, and must pass its address so the pair can set FACTORY_ADDR.",
   "type": "object",
+  "required": [
+    "factory_addr"
+  ],
+  "properties": {
+    "factory_addr": {
+      "description": "Factory contract address (protocol fee collector). Stored as FACTORY_ADDR; required when admin migrates the pair.",
+      "type": "string"
+    }
+  },
   "additionalProperties": false
 }

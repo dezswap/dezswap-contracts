@@ -122,6 +122,28 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "description": "Claim protocol fees accumulated in the factory balance (owner-only; sent to Config owner)",
+      "type": "object",
+      "required": [
+        "claim"
+      ],
+      "properties": {
+        "claim": {
+          "type": "object",
+          "required": [
+            "asset"
+          ],
+          "properties": {
+            "asset": {
+              "$ref": "#/definitions/Asset"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {

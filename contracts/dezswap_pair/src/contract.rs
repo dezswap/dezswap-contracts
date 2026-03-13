@@ -1,5 +1,5 @@
 use crate::error::ContractError;
-use crate::state::PAIR_INFO;
+use crate::state::{FACTORY_ADDR, PAIR_INFO};
 
 use cosmwasm_std::{entry_point, instantiate2_address};
 
@@ -31,6 +31,9 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Commission rate == 0.3%
 const COMMISSION_RATE: u64 = 3;
 
+/// Protocol fee = 1/6 of commission (0.05% of swap, Uniswap v2 style); the rest stays as LP fee.
+const PROTOCOL_FEE_DENOMINATOR: u128 = 6;
+
 const MINIMUM_LIQUIDITY_AMOUNT: u128 = 1_000;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -41,6 +44,9 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    let factory_addr = deps.api.addr_validate(&msg.factory_addr)?;
+    FACTORY_ADDR.save(deps.storage, &factory_addr)?;
 
     let code_info = deps
         .querier
@@ -472,6 +478,7 @@ pub fn swap(
 
     offer_asset.assert_sent_native_token_balance(&info)?;
 
+    let factory_addr = FACTORY_ADDR.load(deps.storage)?;
     let pair_info: PairInfoRaw = PAIR_INFO.load(deps.storage)?;
 
     let pools: [Asset; 2] = pair_info.query_pools(&deps.querier, deps.api, env.contract.address)?;
@@ -514,6 +521,14 @@ pub fn swap(
         amount: return_amount,
     };
 
+    let protocol_fee_amount = commission_amount.multiply_ratio(1u128, PROTOCOL_FEE_DENOMINATOR);
+    let protocol_fee_asset = Asset {
+        info: ask_pool.info.clone(),
+        amount: protocol_fee_amount,
+    };
+    // Remainder of commission stays in pool as LP fee
+    let lp_commission_amount = commission_amount.checked_sub(protocol_fee_amount)?;
+
     // check max spread limit if exist
     assert_max_spread(
         belief_price,
@@ -531,6 +546,9 @@ pub fn swap(
     if !return_amount.is_zero() {
         messages.push(return_asset.into_msg(receiver.clone())?);
     }
+    if !protocol_fee_amount.is_zero() {
+        messages.push(protocol_fee_asset.into_msg(factory_addr.clone())?);
+    }
 
     // 1. send collateral token from the contract to a user
     // 2. send inactive commission to collector
@@ -544,6 +562,9 @@ pub fn swap(
         ("return_amount", &return_amount.to_string()),
         ("spread_amount", &spread_amount.to_string()),
         ("commission_amount", &commission_amount.to_string()),
+        ("lp_commission_amount", &lp_commission_amount.to_string()),
+        ("protocol_fee_collector", factory_addr.as_str()),
+        ("protocol_fee_amount", &protocol_fee_amount.to_string()),
     ]))
 }
 
@@ -863,15 +884,12 @@ pub fn assert_deadline(blocktime: u64, deadline: Option<u64>) -> Result<(), Cont
     Ok(())
 }
 
-const TARGET_CONTRACT_VERSION: &str = "1.1.0";
+const TARGET_CONTRACT_VERSION: &str = "1.2.0";
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // Migrate PairInfoRaw: convert NativeToken (PascalCase) to native_token (snake_case)
-    // The alias in AssetInfoRaw allows us to read old format, and saving will write in new format
-    if let Some(pair_info) = PAIR_INFO.may_load(deps.storage)? {
-        // Re-save to convert to new format (native_token instead of NativeToken)
-        PAIR_INFO.save(deps.storage, &pair_info)?;
-    }
+pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
+    // Admin (e.g. factory) must pass its address so the pair can set FACTORY_ADDR for protocol fee
+    let addr = deps.api.addr_validate(&msg.factory_addr)?;
+    FACTORY_ADDR.save(deps.storage, &addr)?;
 
     migrate_version(
         deps,

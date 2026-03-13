@@ -9,6 +9,8 @@ use cw20::Cw20ReceiveMsg;
 pub struct InstantiateMsg {
     /// Asset infos
     pub asset_infos: [AssetInfo; 2],
+    /// Factory contract address (protocol fee collector)
+    pub factory_addr: String,
     /// Token contract code id for initialization
     pub token_code_id: u64,
     pub asset_decimals: [u8; 2],
@@ -85,6 +87,9 @@ pub struct ReverseSimulationResponse {
     pub commission_amount: Uint128,
 }
 
-/// We currently take no arguments for migrations
+/// Migration message; only the admin (e.g. factory) can call migrate, and must pass its address so the pair can set FACTORY_ADDR.
 #[cw_serde]
-pub struct MigrateMsg {}
+pub struct MigrateMsg {
+    /// Factory contract address (protocol fee collector). Stored as FACTORY_ADDR; required when admin migrates the pair.
+    pub factory_addr: String,
+}

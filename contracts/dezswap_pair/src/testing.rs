@@ -33,6 +33,7 @@ fn proper_initialization() {
                 contract_addr: deps.api.addr_make("asset0000").to_string(),
             },
         ],
+        factory_addr: deps.api.addr_make("factory").to_string(),
         token_code_id: 10u64,
         asset_decimals: [6u8, 8u8],
     };
@@ -102,6 +103,7 @@ fn provide_liquidity() {
                 contract_addr: deps.api.addr_make("asset0000").to_string(),
             },
         ],
+        factory_addr: deps.api.addr_make("factory").to_string(),
         token_code_id: 10u64,
         asset_decimals: [6u8, 8u8],
     };
@@ -516,6 +518,7 @@ fn withdraw_liquidity() {
                 contract_addr: deps.api.addr_make("asset0000").to_string(),
             },
         ],
+        factory_addr: deps.api.addr_make("factory").to_string(),
         token_code_id: 10u64,
         asset_decimals: [6u8, 8u8],
     };
@@ -691,6 +694,7 @@ fn try_native_to_token() {
                 contract_addr: deps.api.addr_make("asset0000").to_string(),
             },
         ],
+        factory_addr: deps.api.addr_make("factory").to_string(),
         token_code_id: 10u64,
         asset_decimals: [6u8, 8u8],
     };
@@ -723,6 +727,7 @@ fn try_native_to_token() {
     );
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     let msg_transfer = res.messages.first().expect("no message");
+    let msg_protocol_fee = res.messages.get(1).expect("no message");
 
     // current price is 1.5, so expected return without spread is 1000
     // 952.380952 = 20000 - 20000 * 30000 / (30000 + 1500)
@@ -733,6 +738,10 @@ fn try_native_to_token() {
         .unwrap();
     let expected_commission_amount =
         expected_ret_amount.multiply_ratio(3u128, 1000u128) + Uint128::from(1u8); // 0.3%, round up
+    let expected_protocol_fee_amount = expected_commission_amount.multiply_ratio(1u128, 6u128);
+    let expected_lp_commission_amount = expected_commission_amount
+        .checked_sub(expected_protocol_fee_amount)
+        .unwrap();
     let expected_return_amount = expected_ret_amount
         .checked_sub(expected_commission_amount)
         .unwrap();
@@ -800,6 +809,18 @@ fn try_native_to_token() {
             attr("return_amount", expected_return_amount.to_string()),
             attr("spread_amount", expected_spread_amount.to_string()),
             attr("commission_amount", expected_commission_amount.to_string()),
+            attr(
+                "lp_commission_amount",
+                expected_lp_commission_amount.to_string()
+            ),
+            attr(
+                "protocol_fee_collector",
+                deps.api.addr_make("factory").to_string()
+            ),
+            attr(
+                "protocol_fee_amount",
+                expected_protocol_fee_amount.to_string()
+            )
         ]
     );
 
@@ -814,6 +835,19 @@ fn try_native_to_token() {
             funds: vec![],
         })),
         msg_transfer,
+    );
+
+    assert_eq!(
+        &SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: deps.api.addr_make("asset0000").to_string(),
+            msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: deps.api.addr_make("factory").to_string(),
+                amount: expected_protocol_fee_amount,
+            })
+            .unwrap(),
+            funds: vec![],
+        })),
+        msg_protocol_fee,
     );
 }
 
@@ -839,6 +873,7 @@ fn try_token_to_native() {
                 contract_addr: deps.api.addr_make("asset0000").to_string(),
             },
         ],
+        factory_addr: deps.api.addr_make("factory").to_string(),
         token_code_id: 10u64,
         asset_decimals: [8u8, 8u8],
     };
@@ -901,6 +936,7 @@ fn try_token_to_native() {
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
     let msg_transfer = res.messages.first().expect("no message");
+    let msg_protocol_fee = res.messages.get(1).expect("no message");
 
     // current price is 1.5, so expected return without spread is 1000
     // 952.380952 = 20000 - 20000 * 30000 / (30000 + 1500)
@@ -910,6 +946,10 @@ fn try_token_to_native() {
         .unwrap();
     let expected_commission_amount =
         expected_ret_amount.multiply_ratio(3u128, 1000u128) + Uint128::from(1u8); // 0.3%, round up
+    let expected_protocol_fee_amount = expected_commission_amount.multiply_ratio(1u128, 6u128);
+    let expected_lp_commission_amount = expected_commission_amount
+        .checked_sub(expected_protocol_fee_amount)
+        .unwrap();
     let expected_return_amount = expected_ret_amount
         .checked_sub(expected_commission_amount)
         .unwrap();
@@ -980,6 +1020,18 @@ fn try_token_to_native() {
             attr("return_amount", expected_return_amount.to_string()),
             attr("spread_amount", expected_spread_amount.to_string()),
             attr("commission_amount", expected_commission_amount.to_string()),
+            attr(
+                "lp_commission_amount",
+                expected_lp_commission_amount.to_string()
+            ),
+            attr(
+                "protocol_fee_collector",
+                deps.api.addr_make("factory").to_string()
+            ),
+            attr(
+                "protocol_fee_amount",
+                expected_protocol_fee_amount.to_string()
+            )
         ]
     );
 
@@ -992,6 +1044,17 @@ fn try_token_to_native() {
             }],
         })),
         msg_transfer,
+    );
+
+    assert_eq!(
+        &SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            to_address: deps.api.addr_make("factory").to_string(),
+            amount: vec![Coin {
+                denom: "uusd".to_string(),
+                amount: expected_protocol_fee_amount
+            }],
+        })),
+        msg_protocol_fee,
     );
 
     // failed due to non asset token contract try to execute sell
@@ -1207,6 +1270,7 @@ fn test_query_pool() {
                 contract_addr: deps.api.addr_make("asset0000").to_string(),
             },
         ],
+        factory_addr: deps.api.addr_make("factory").to_string(),
         token_code_id: 10u64,
         asset_decimals: [6u8, 8u8],
     };

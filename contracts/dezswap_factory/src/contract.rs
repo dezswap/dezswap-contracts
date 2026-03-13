@@ -65,7 +65,34 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
         ExecuteMsg::MigratePair { contract, code_id } => {
             execute_migrate_pair(deps, env, info, contract, code_id)
         }
+        ExecuteMsg::Claim { asset } => execute_claim(deps, env, info, asset),
     }
+}
+
+pub fn execute_claim(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    asset: Asset,
+) -> StdResult<Response> {
+    let config: Config = CONFIG.load(deps.storage)?;
+
+    // owner-only
+    if deps.api.addr_canonicalize(info.sender.as_str())? != config.owner {
+        return Err(StdError::generic_err("unauthorized"));
+    }
+
+    let recipient = deps.api.addr_humanize(&config.owner)?;
+
+    let recipient_str = recipient.to_string();
+    let asset_str = asset.info.to_string();
+    let msg = asset.into_msg(recipient)?;
+
+    Ok(Response::new().add_message(msg).add_attributes(vec![
+        ("action", "claim"),
+        ("recipient", &recipient_str),
+        ("asset", &asset_str),
+    ]))
 }
 
 // Only owner can execute it
@@ -115,6 +142,18 @@ pub fn execute_create_pair(
 
     if assets[0].info == assets[1].info {
         return Err(StdError::generic_err("same asset"));
+    }
+
+    let mut expected: Vec<Coin> = assets
+        .iter()
+        .filter(|a| !a.amount.is_zero() && a.info.is_native_token())
+        .map(|a| coin(a.amount.u128(), a.info.to_string()))
+        .collect();
+    expected.sort_by(|a, b| a.denom.cmp(&b.denom));
+    let mut provided = info.funds.clone();
+    provided.sort_by(|a, b| a.denom.cmp(&b.denom));
+    if expected != provided {
+        return Err(StdError::generic_err("liquidity funds mismatch"));
     }
 
     let asset_1_decimal: u8 = match assets[0]
@@ -188,6 +227,7 @@ pub fn execute_create_pair(
                 label: "pair".to_string(),
                 msg: to_json_binary(&PairInstantiateMsg {
                     asset_infos,
+                    factory_addr: env.contract.address.to_string(),
                     token_code_id: config.token_code_id,
                     asset_decimals,
                 })?,
@@ -232,7 +272,7 @@ pub fn execute_add_native_token_decimals(
 
 pub fn execute_migrate_pair(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     contract: String,
     code_id: Option<u64>,
@@ -250,7 +290,9 @@ pub fn execute_migrate_pair(
         Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Migrate {
             contract_addr: contract,
             new_code_id: code_id,
-            msg: to_json_binary(&PairMigrateMsg {})?,
+            msg: to_json_binary(&PairMigrateMsg {
+                factory_addr: env.contract.address.to_string(),
+            })?,
         })),
     )
 }
@@ -405,33 +447,9 @@ pub fn query_native_token_decimal(
     Ok(NativeTokenDecimalsResponse { decimals })
 }
 
-use cosmwasm_std::Order;
-const TARGET_CONTRACT_VERSION: &str = "1.1.1";
+const TARGET_CONTRACT_VERSION: &str = "1.2.0";
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Response> {
-    // Migrate all PairInfoRaw in PAIRS Map: convert NativeToken (PascalCase) to native_token (snake_case)
-    // The alias in AssetInfoRaw allows us to read old format, and saving will write in new format
-    let pairs: Vec<(Vec<u8>, PairInfoRaw)> = PAIRS
-        .range(deps.storage, None, None, Order::Ascending)
-        .collect::<StdResult<Vec<_>>>()?;
-
-    for (key, pair_info) in pairs {
-        // Re-save to convert to new format (native_token instead of NativeToken)
-        PAIRS.save(deps.storage, &key, &pair_info)?;
-    }
-
-    // Migrate all AllowNativeToken in ALLOW_NATIVE_TOKENS Map: convert NativeToken to low case
-    let allow_native_tokens: Vec<(Vec<u8>, u8)> = ALLOW_NATIVE_TOKENS
-        .range(deps.storage, None, None, Order::Ascending)
-        .collect::<StdResult<Vec<_>>>()?;
-
-    for (key, decimals) in allow_native_tokens {
-        let key: String = String::from_utf8(key)?
-            .to_ascii_lowercase()
-            .replace(":0x", ":");
-        ALLOW_NATIVE_TOKENS.save(deps.storage, key.as_bytes(), &decimals)?;
-    }
-
     migrate_version(
         deps,
         TARGET_CONTRACT_VERSION,
